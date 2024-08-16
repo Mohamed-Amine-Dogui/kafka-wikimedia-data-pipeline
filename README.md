@@ -6,10 +6,11 @@ This repository is a hands-on project designed to enhance your Kafka skills thro
 - [Project Overview](#project-overview)
 - [Advanced Kafka Applications](#advanced-kafka-applications)
 - [Installing Docker Compose on Debian](#installing-docker-compose-on-debian)
-    - [Step 1: Installing Docker Engine](#step-1-installing-docker-engine)
-    - [Step 2: Installing Docker Compose](#step-2-installing-docker-compose)
-    - [Step 3: Running Docker Compose](#step-3-running-docker-compose)
+   - [Step 1: Installing Docker Engine](#step-1-installing-docker-engine)
+   - [Step 2: Installing Docker Compose](#step-2-installing-docker-compose)
+   - [Step 3: Running Docker Compose](#step-3-running-docker-compose)
 - [Running the Kafka Wikimedia Data Pipeline](#running-the-kafka-wikimedia-data-pipeline)
+- [Accessing the Conduktor Platform](#accessing-the-conduktor-platform)
 
 ## Project Overview
 
@@ -140,7 +141,26 @@ After successfully installing Docker Compose, you can now run your Kafka Wikimed
     ✔ Container schema-registry           Started                                                                    2.1s 
     ```
 
+## Accessing the Conduktor Platform
+
+Once the Docker containers are running, you can access the Conduktor platform to manage and monitor your Kafka cluster.
+
+1. **Open your web browser** and navigate to:
+
+    ```
+    http://localhost:8080
+    ```
+
+2. **Log in to Conduktor** using the predefined credentials specified in the `platform-config.yml` file:
+
+   - **Email:** `admin@conduktor.io`
+   - **Password:** `admin`
+
+3. **Explore the Platform:**
+   - Once logged in, you can manage your Kafka cluster, monitor data streams, and utilize other features provided by Conduktor.
+
 ## Running the Kafka Wikimedia Data Pipeline
 
 Once your Docker containers are up and running, you can begin using the Kafka Wikimedia Data Pipeline as described in the project overview. This setup enables you to stream live data from Wikimedia, process it with Kafka, and analyze it using OpenSearch.
 
+-
