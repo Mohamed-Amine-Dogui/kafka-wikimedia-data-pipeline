@@ -22,10 +22,9 @@ For a deeper understanding of Apache Kafka and related concepts, refer to the fo
 3. [Implementing the Kafka Producer for Wikimedia](#3-implementing-the-kafka-producer-for-wikimedia)
    1. [Code Overview](#31-code-overview)
    2. [Explanation](#32-explanation)
-      1. [Bootstrap Servers Configuration](#321-bootstrap-servers-configuration)
-      2. [Wikimedia Change Handler](#322-wikimedia-change-handler)
-      3. [Event Source and Stream URL](#323-event-source-and-stream-url)
-      4. [Blocking the Program](#324-blocking-the-program)
+      1. [Wikimedia Change Handler](#322-wikimedia-change-handler)
+      2. [Event Source and Stream URL](#323-event-source-and-stream-url)
+      3. [Blocking the Program](#324-blocking-the-program)
    3. [Key Takeaways](#33-key-takeaways)
 
 ---
@@ -209,21 +208,14 @@ public class WikimediaChangesProducer {
 
 ### 3.2 Explanation
 
-#### 1. **Bootstrap Servers Configuration**
-   ```java
-   String bootstrapServers = "127.0.0.1:9092";
-   ```
-- **Bootstrap servers** are the addresses of the Kafka brokers that the producer will connect to. In this example, Kafka is running on `localhost` with the default port `9092`.
 
-
-
-#### 2. **Wikimedia Change Handler**
+#### 1. **Wikimedia Change Handler**
    ```java
    EventHandler eventHandler = new WikimediaChangeHandler(producer, topic);
    ```
 - The `WikimediaChangeHandler` class is implemented to handle the events received from the Wikimedia stream. It processes these events and sends them to the specified Kafka topic using the producer.
 
-#### 3. **Event Source and Stream URL**
+#### 2. **Event Source and Stream URL**
    ```java
    String url = "https://stream.wikimedia.org/v2/stream/recentchange";
    EventSource.Builder builder = new EventSource.Builder(eventHandler, URI.create(url));
@@ -232,7 +224,7 @@ public class WikimediaChangesProducer {
 - **URL**: The `url` specifies the Wikimedia stream endpoint. The producer listens to this endpoint to capture real-time events.
 - **EventSource**: The `EventSource` class manages the connection to the Wikimedia stream and forwards the received events to the `WikimediaChangeHandler`.
 
-#### 4. **Blocking the Program**
+#### 3. **Blocking the Program**
    ```java
    TimeUnit.MINUTES.sleep(10);
    ```
