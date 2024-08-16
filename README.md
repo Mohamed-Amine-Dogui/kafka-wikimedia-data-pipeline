@@ -25,7 +25,7 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    1. [Code Overview](#41-code-overview)
    2. [Explanation](#42-explanation)
       1. [onMessage Method](#421-onmessage-method)
-      2. [onComment and onError Methods](#422-oncomment-and-onerror-methods)
+      2. [onComment and onError Methods](#422-oncomment-methods)
    3. [Key Takeaways](#43-key-takeaways)
 ---
 
@@ -315,7 +315,7 @@ public class WikimediaChangeHandler implements EventHandler {
    ```
 - **onMessage**: This method handles incoming messages from the Wikimedia event stream. The message data is logged and then asynchronously sent to the Kafka topic using the producer.
 
-#### 2. **onComment and onError Methods**
+#### 2. **onComment Methods**
    ```java
    @Override
    public void onError(Throwable t) {
