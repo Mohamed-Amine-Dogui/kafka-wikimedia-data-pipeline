@@ -2,12 +2,6 @@
 
 This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
-### Additional Resources
-
-For a deeper understanding of Apache Kafka and related concepts, refer to the following resource:
-
-- [What is Apache Kafka?](https://www.conduktor.io/kafka/what-is-apache-kafka/) - A comprehensive guide by Conduktor covering Kafka's architecture, use cases, and more.
-
 ### Table of Contents
 
 1. [Kafka Wikimedia Data Pipeline Overview](#1-kafka-wikimedia-data-pipeline-overview)
