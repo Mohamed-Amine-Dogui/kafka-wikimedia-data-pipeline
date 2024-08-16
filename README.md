@@ -25,7 +25,7 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    1. [Code Overview](#41-code-overview)
    2. [Explanation](#42-explanation)
       1. [onMessage Method](#421-onmessage-method)
-      2. [onComment and onError Methods](#422-oncomment-methods)
+      2. [onComment Methods](#422-oncomment-methods)
    3. [Key Takeaways](#43-key-takeaways)
 ---
 
