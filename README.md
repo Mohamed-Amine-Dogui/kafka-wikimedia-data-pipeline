@@ -27,8 +27,6 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
       1. [onMessage Method](#421-onmessage-method)
       2. [onComment Methods](#422-oncomment-methods)
    3. [Key Takeaways](#43-key-takeaways)
----
-
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
