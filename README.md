@@ -158,9 +158,3 @@ Once the Docker containers are running, you can access the Conduktor platform to
 
 3. **Explore the Platform:**
    - Once logged in, you can manage your Kafka cluster, monitor data streams, and utilize other features provided by Conduktor.
-
-## Running the Kafka Wikimedia Data Pipeline
-
-Once your Docker containers are up and running, you can begin using the Kafka Wikimedia Data Pipeline as described in the project overview. This setup enables you to stream live data from Wikimedia, process it with Kafka, and analyze it using OpenSearch.
-
--
