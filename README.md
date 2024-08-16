@@ -1,39 +1,63 @@
 # Kafka Wikimedia Data Pipeline
 
-This repository is a hands-on project designed to enhance your Kafka skills through real-world application. Created by Stephane from Conduktor, this project involves streaming live data from Wikimedia into Apache Kafka topics using a Kafka Producer. Once the data is in Kafka, a Kafka Consumer will process this data and send it to OpenSearch for indexing and analysis.
+This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
-## Table of Contents
-- [Project Overview](#project-overview)
-- [Advanced Kafka Applications](#advanced-kafka-applications)
-- [Installing Docker Compose on Debian](#installing-docker-compose-on-debian)
-   - [Step 1: Installing Docker Engine](#step-1-installing-docker-engine)
-   - [Step 2: Installing Docker Compose](#step-2-installing-docker-compose)
-   - [Step 3: Running Docker Compose](#step-3-running-docker-compose)
-- [Running the Kafka Wikimedia Data Pipeline](#running-the-kafka-wikimedia-data-pipeline)
-- [Accessing the Conduktor Platform](#accessing-the-conduktor-platform)
+### Additional Resources
 
-## Project Overview
+For a deeper understanding of Apache Kafka and related concepts, refer to the following resource:
 
-In this project, you'll learn how to:
+- [What is Apache Kafka?](https://www.conduktor.io/kafka/what-is-apache-kafka/) - A comprehensive guide by Conduktor covering Kafka's architecture, use cases, and more.
 
-- **Stream Data from Wikimedia**: Use a Kafka Producer to capture real-time data from the Wikimedia stream and send it to Apache Kafka.
-- **Consume and Process Data**: Develop a Kafka Consumer that retrieves data from Kafka topics and forwards it to OpenSearch for advanced search and analytics.
-- **Explore Kafka Concepts**: Gain practical knowledge of Kafka, including producers, consumers, topics, partitions, and rebalancing strategies.
-- **Integration with OpenSearch**: Understand how to integrate Kafka with OpenSearch, leveraging it for powerful search and analytics on the streamed data.
+### Table of Contents
 
-## Advanced Kafka Applications
+1. [Kafka Wikimedia Data Pipeline Overview](#1-kafka-wikimedia-data-pipeline-overview)
+2. [Setting Up the Environment](#2-setting-up-the-environment)
+   1. [Prerequisites](#21-prerequisites)
+   2. [Installing Docker Compose on Debian](#22-installing-docker-compose-on-debian)
+      1. [Step 1: Installing Docker Engine](#221-step-1-installing-docker-engine)
+      2. [Step 2: Installing Docker Compose](#222-step-2-installing-docker-compose)
+      3. [Step 3: Running Docker Compose](#223-step-3-running-docker-compose)
+   3. [Running the Kafka Wikimedia Data Pipeline](#23-running-the-kafka-wikimedia-data-pipeline)
+   4. [Accessing the Conduktor Platform](#24-accessing-the-conduktor-platform)
+3. [Implementing the Kafka Producer for Wikimedia](#3-implementing-the-kafka-producer-for-wikimedia)
+   1. [Code Overview](#31-code-overview)
+   2. [Explanation](#32-explanation)
+      1. [Bootstrap Servers Configuration](#321-bootstrap-servers-configuration)
+      2. [Wikimedia Change Handler](#322-wikimedia-change-handler)
+      3. [Event Source and Stream URL](#323-event-source-and-stream-url)
+      4. [Blocking the Program](#324-blocking-the-program)
+   3. [Key Takeaways](#33-key-takeaways)
 
-After completing the initial implementation with Kafka Producers and Consumers, you'll take your skills to the next level by exploring more advanced Kafka concepts:
+---
 
-- **Kafka Connect**: Use the Kafka Connect SSE Source Connector to stream data from Wikimedia directly into Apache Kafka.
-- **Kafka Streams**: Implement a Kafka Streams application to perform real-time processing and compute statistics on the data stream.
-- **Kafka Connect ElasticSearch Sink**: Finally, utilize the Kafka Connect ElasticSearch Sink to send processed data into OpenSearch, which is an open-source fork of ElasticSearch.
+## 1. Kafka Wikimedia Data Pipeline Overview
 
-## Installing Docker Compose on Debian
+In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
 
-### Step 1: Installing Docker Engine
+### What You'll Learn:
 
-To use Docker Compose, Docker Engine must be installed first. Follow these steps to install Docker Engine on Debian:
+- **Streaming Data**: Capture real-time data from Wikimedia and send it to Kafka topics.
+- **Processing Data**: Develop consumers to process Kafka data and forward it to OpenSearch.
+- **Kafka Concepts**: Understand Kafka producers, consumers, topics, partitions, and rebalancing strategies.
+- **Integration with OpenSearch**: Learn how to integrate Kafka with OpenSearch for indexing and analytics.
+
+---
+
+## 2. Setting Up the Environment
+
+### 2.1 Prerequisites
+
+Before getting started, ensure you have the following installed:
+
+- **Debian Linux**: The environment used in this guide.
+- **Docker**: Containerization platform required to run Kafka, Zookeeper, and other services.
+- **Docker Compose**: A tool for defining and running multi-container Docker applications.
+
+### 2.2 Installing Docker Compose on Debian
+
+#### 2.2.1 Step 1: Installing Docker Engine
+
+Follow these steps to install Docker Engine:
 
 1. **Update the package list**:
 
@@ -41,19 +65,19 @@ To use Docker Compose, Docker Engine must be installed first. Follow these steps
     sudo apt update
     ```
 
-2. **Install required dependencies**:
+2. **Install dependencies**:
 
     ```bash
     sudo apt install apt-transport-https ca-certificates curl software-properties-common
     ```
 
-3. **Add Docker's official GPG key**:
+3. **Add Docker’s official GPG key**:
 
     ```bash
     curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     ```
 
-4. **Add Docker's official repository**:
+4. **Set up the stable repository**:
 
     ```bash
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -78,11 +102,11 @@ To use Docker Compose, Docker Engine must be installed first. Follow these steps
     sudo systemctl enable docker
     ```
 
-### Step 2: Installing Docker Compose
+#### 2.2.2 Step 2: Installing Docker Compose
 
-With Docker Engine installed, the next step is to install Docker Compose:
+With Docker Engine installed, install Docker Compose:
 
-1. **Install Docker Compose as a plugin**:
+1. **Install Docker Compose plugin**:
 
     ```bash
     sudo apt install docker-compose-plugin
@@ -94,16 +118,9 @@ With Docker Engine installed, the next step is to install Docker Compose:
     docker compose version
     ```
 
-   Alternatively, you can install Docker Compose as a standalone binary if the above doesn't work:
+#### 2.2.3 Step 3: Running Docker Compose
 
-    ```bash
-    sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
-    ```
-
-### Step 3: Running Docker Compose
-
-After successfully installing Docker Compose, you can now run your Kafka Wikimedia Data Pipeline using Docker Compose:
+Run your Kafka Wikimedia Data Pipeline using Docker Compose:
 
 1. **Navigate to your project directory**:
 
@@ -111,50 +128,119 @@ After successfully installing Docker Compose, you can now run your Kafka Wikimed
     cd ~/Documents/projects/kafka-wikimedia-data-pipeline/conduktor-platform
     ```
 
-2. **Run the Docker Compose command**:
+2. **Start the Docker services**:
 
     ```bash
     sudo docker compose up -d
     ```
 
-   This will pull the necessary Docker images and start the services as defined in your `docker-compose.yml` file.
+### 2.3 Running the Kafka Wikimedia Data Pipeline
 
-3. **Monitor the output**:
+After installing Docker Compose, you can now run the Kafka Wikimedia Data Pipeline. This will start Zookeeper, Kafka, Schema Registry, and the Conduktor platform.
 
-   You should see output similar to the following, indicating that the services are starting:
+### 2.4 Accessing the Conduktor Platform
 
-    ```bash
-    [+] Running 58/6
-    ✔ schema-registry Pulled                                                                                       344.3s 
-    ✔ conduktor-monitoring Pulled                                                                                   73.4s 
-    ✔ postgresql Pulled                                                                                             48.3s 
-    ✔ conduktor-console Pulled                                                                                     280.1s 
-    ✔ zookeeper Pulled                                                                                             165.3s 
-    ✔ kafka Pulled                                                                                                 165.3s 
-    [+] Running 7/7
-    ✔ Network conduktor-platform_default  Created                                                                    0.2s 
-    ✔ Container postgresql                Started                                                                    2.2s 
-    ✔ Container zookeeper                 Started                                                                    2.2s 
-    ✔ Container conduktor-monitoring      Started                                                                    2.5s 
-    ✔ Container kafka                     Started                                                                    1.5s 
-    ✔ Container conduktor-console         Started                                                                    1.4s 
-    ✔ Container schema-registry           Started                                                                    2.1s 
-    ```
+Once the containers are up and running, access Conduktor:
 
-## Accessing the Conduktor Platform
-
-Once the Docker containers are running, you can access the Conduktor platform to manage and monitor your Kafka cluster.
-
-1. **Open your web browser** and navigate to:
+1. **Open your browser** and go to:
 
     ```
     http://localhost:8080
     ```
 
-2. **Log in to Conduktor** using the predefined credentials specified in the `platform-config.yml` file:
+2. **Login using the credentials** specified in `platform-config.yml`:
 
    - **Email:** `admin@conduktor.io`
    - **Password:** `admin`
 
-3. **Explore the Platform:**
-   - Once logged in, you can manage your Kafka cluster, monitor data streams, and utilize other features provided by Conduktor.
+3. **Explore the Conduktor Platform**:
+   - Manage your Kafka cluster, monitor streams, and utilize the full feature set of Conduktor.
+---
+
+## 3. Implementing the Kafka Producer for Wikimedia
+
+### 3.1 Code Overview
+
+Below is the code for the `WikimediaChangesProducer` class. This Java class sets up a Kafka producer that streams real-time data from Wikimedia's event stream and sends it to a Kafka topic.
+
+```java
+package org.example.kafka.wikimedia;
+
+import com.launchdarkly.eventsource.EventHandler;
+import com.launchdarkly.eventsource.EventSource;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.net.URI;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+public class WikimediaChangesProducer {
+
+   public static void main(String[] args) throws InterruptedException {
+
+      String bootstrapServers = "127.0.0.1:9092";
+
+      // create Producer Properties
+      Properties properties = new Properties();
+      properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+      properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+      properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+      // create the Producer
+      KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
+
+      String topic = "wikimedia.recentchange";
+
+      EventHandler eventHandler = new WikimediaChangeHandler(producer, topic);
+      String url = "https://stream.wikimedia.org/v2/stream/recentchange";
+      EventSource.Builder builder = new EventSource.Builder(eventHandler, URI.create(url));
+      EventSource eventSource = builder.build();
+
+      // start the producer in another thread
+      eventSource.start();
+
+      // we produce for 10 minutes and block the program until then
+      TimeUnit.MINUTES.sleep(10);
+   }
+}
+```
+
+### 3.2 Explanation
+
+#### 1. **Bootstrap Servers Configuration**
+   ```java
+   String bootstrapServers = "127.0.0.1:9092";
+   ```
+- **Bootstrap servers** are the addresses of the Kafka brokers that the producer will connect to. In this example, Kafka is running on `localhost` with the default port `9092`.
+
+
+
+#### 2. **Wikimedia Change Handler**
+   ```java
+   EventHandler eventHandler = new WikimediaChangeHandler(producer, topic);
+   ```
+- The `WikimediaChangeHandler` class is implemented to handle the events received from the Wikimedia stream. It processes these events and sends them to the specified Kafka topic using the producer.
+
+#### 3. **Event Source and Stream URL**
+   ```java
+   String url = "https://stream.wikimedia.org/v2/stream/recentchange";
+   EventSource.Builder builder = new EventSource.Builder(eventHandler, URI.create(url));
+   EventSource eventSource = builder.build();
+   ```
+- **URL**: The `url` specifies the Wikimedia stream endpoint. The producer listens to this endpoint to capture real-time events.
+- **EventSource**: The `EventSource` class manages the connection to the Wikimedia stream and forwards the received events to the `WikimediaChangeHandler`.
+
+#### 4. **Blocking the Program**
+   ```java
+   TimeUnit.MINUTES.sleep(10);
+   ```
+- This line ensures that the producer keeps running for 10 minutes, during which it continuously processes and sends events to Kafka. After 10 minutes, the program will exit, and the producer will stop.
+
+### 3.3 Key Takeaways
+
+- **Event Streaming**: The producer continuously streams real-time events from Wikimedia, demonstrating how Kafka can be used to handle live data feeds.
+- **Event Handling**: The `WikimediaChangeHandler` plays a crucial role in processing the incoming events and ensuring they are correctly forwarded to Kafka.
+- **Multi-Threading**: The producer operates in its thread, allowing the program to handle the events asynchronously without blocking the main execution flow.
+
