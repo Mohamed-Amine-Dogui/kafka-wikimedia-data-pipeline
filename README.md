@@ -22,11 +22,17 @@ For a deeper understanding of Apache Kafka and related concepts, refer to the fo
 3. [Implementing the Kafka Producer for Wikimedia](#3-implementing-the-kafka-producer-for-wikimedia)
    1. [Code Overview](#31-code-overview)
    2. [Explanation](#32-explanation)
-      1. [Wikimedia Change Handler](#322-wikimedia-change-handler)
-      2. [Event Source and Stream URL](#323-event-source-and-stream-url)
-      3. [Blocking the Program](#324-blocking-the-program)
+      1. [Bootstrap Servers Configuration](#321-bootstrap-servers-configuration)
+      2. [Wikimedia Change Handler](#322-wikimedia-change-handler)
+      3. [Event Source and Stream URL](#323-event-source-and-stream-url)
+      4. [Blocking the Program](#324-blocking-the-program)
    3. [Key Takeaways](#33-key-takeaways)
-
+4. [Implementing the WikimediaChangeHandler Class](#4-implementing-the-wikimediachangehandler-class)
+   1. [Code Overview](#41-code-overview)
+   2. [Explanation](#42-explanation)
+      1. [onMessage Method](#421-onmessage-method)
+      2. [onComment and onError Methods](#422-oncomment-and-onerror-methods)
+   3. [Key Takeaways](#43-key-takeaways)
 ---
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
@@ -154,6 +160,7 @@ Once the containers are up and running, access Conduktor:
 
 3. **Explore the Conduktor Platform**:
    - Manage your Kafka cluster, monitor streams, and utilize the full feature set of Conduktor.
+
 ---
 
 ## 3. Implementing the Kafka Producer for Wikimedia
@@ -208,23 +215,30 @@ public class WikimediaChangesProducer {
 
 ### 3.2 Explanation
 
+#### 1. **Bootstrap Servers Configuration**
+   ```java
+   String bootstrapServers = "127.0.0.1:9092";
+   ```
+- **Bootstrap servers** are the addresses of the Kafka brokers that the producer will connect to. In this example, Kafka is running on `localhost` with the default port `9092`.
 
-#### 1. **Wikimedia Change Handler**
+#### 2. **Wikimedia Change Handler**
    ```java
    EventHandler eventHandler = new WikimediaChangeHandler(producer, topic);
    ```
 - The `WikimediaChangeHandler` class is implemented to handle the events received from the Wikimedia stream. It processes these events and sends them to the specified Kafka topic using the producer.
 
-#### 2. **Event Source and Stream URL**
+#### 3. **Event Source and Stream URL**
    ```java
    String url = "https://stream.wikimedia.org/v2/stream/recentchange";
    EventSource.Builder builder = new EventSource.Builder(eventHandler, URI.create(url));
-   EventSource eventSource = builder.build();
+   Event
+
+Source eventSource = builder.build();
    ```
 - **URL**: The `url` specifies the Wikimedia stream endpoint. The producer listens to this endpoint to capture real-time events.
 - **EventSource**: The `EventSource` class manages the connection to the Wikimedia stream and forwards the received events to the `WikimediaChangeHandler`.
 
-#### 3. **Blocking the Program**
+#### 4. **Blocking the Program**
    ```java
    TimeUnit.MINUTES.sleep(10);
    ```
@@ -235,4 +249,90 @@ public class WikimediaChangesProducer {
 - **Event Streaming**: The producer continuously streams real-time events from Wikimedia, demonstrating how Kafka can be used to handle live data feeds.
 - **Event Handling**: The `WikimediaChangeHandler` plays a crucial role in processing the incoming events and ensuring they are correctly forwarded to Kafka.
 - **Multi-Threading**: The producer operates in its thread, allowing the program to handle the events asynchronously without blocking the main execution flow.
+
+---
+
+## 4. Implementing the WikimediaChangeHandler 
+
+### 4.1 Code Overview
+
+Below is the code for the `WikimediaChangeHandler` . This class is responsible for handling the events received from the Wikimedia event stream and sending them to the Kafka topic.
+
+```java
+package org.example.kafka.wikimedia;
+
+import com.launchdarkly.eventsource.EventHandler;
+import com.launchdarkly.eventsource.MessageEvent;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class WikimediaChangeHandler implements EventHandler {
+
+    KafkaProducer<String, String> kafkaProducer;
+    String topic;
+    private final Logger log = LoggerFactory.getLogger(WikimediaChangeHandler.class.getSimpleName());
+
+    public WikimediaChangeHandler(KafkaProducer<String, String> kafkaProducer, String topic){
+        this.kafkaProducer = kafkaProducer;
+        this.topic = topic;
+    }
+
+    @Override
+    public void onOpen() {
+        // nothing here
+    }
+
+    @Override
+    public void onClosed() {
+        kafkaProducer.close();
+    }
+
+    @Override
+    public void onMessage(String event, MessageEvent messageEvent) {
+        log.info(messageEvent.getData());
+        // asynchronous
+        kafkaProducer.send(new ProducerRecord<>(topic, messageEvent.getData()));
+    }
+
+    @Override
+    public void onComment(String comment) {
+        // nothing here
+    }
+
+    @Override
+    public void onError(Throwable t) {
+        log.error("Error in Stream Reading", t);
+    }
+}
+```
+
+### 4.2 Explanation
+
+#### 1. **onMessage Method**
+   ```java
+   @Override
+   public void onMessage(String event, MessageEvent messageEvent) {
+       log.info(messageEvent.getData());
+       // asynchronous
+       kafkaProducer.send(new ProducerRecord<>(topic, messageEvent.getData()));
+   }
+   ```
+- **onMessage**: This method handles incoming messages from the Wikimedia event stream. The message data is logged and then asynchronously sent to the Kafka topic using the producer.
+
+#### 2. **onComment and onError Methods**
+   ```java
+   @Override
+   public void onError(Throwable t) {
+       log.error("Error in Stream Reading", t);
+   }
+   ```
+- **onError**: This method is triggered when there’s an error in reading the stream. The error is logged for debugging purposes.
+
+### 4.3 Key Takeaways
+
+- **Event Handling**: The `WikimediaChangeHandler` class is crucial for processing and forwarding events from the Wikimedia stream to Kafka.
+- **Error Handling**: Proper logging is implemented to track errors during the event streaming process.
+- **Resource Management**: Ensures that the Kafka producer is properly closed when the stream is closed, preventing resource leaks.
 
