@@ -26,6 +26,7 @@ public class WikimediaChangeHandler implements EventHandler {
 
     @Override
     public void onClosed() {
+
         kafkaProducer.close();
     }
 
@@ -43,6 +44,7 @@ public class WikimediaChangeHandler implements EventHandler {
 
     @Override
     public void onError(Throwable t) {
+
         log.error("Error in Stream Reading", t);
     }
 }

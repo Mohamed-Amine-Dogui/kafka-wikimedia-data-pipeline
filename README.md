@@ -3,7 +3,6 @@
 This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
 ### Table of Contents
-
 1. [Kafka Wikimedia Data Pipeline Overview](#1-kafka-wikimedia-data-pipeline-overview)
 2. [Setting Up the Environment](#2-setting-up-the-environment)
    1. [Prerequisites](#21-prerequisites)
@@ -13,6 +12,7 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
       3. [Step 3: Running Docker Compose](#223-step-3-running-docker-compose)
    3. [Running the Kafka Wikimedia Data Pipeline](#23-running-the-kafka-wikimedia-data-pipeline)
    4. [Accessing the Conduktor Platform](#24-accessing-the-conduktor-platform)
+   5. [Troubleshooting](#25-troubleshooting)
 3. [Implementing the Kafka Producer for Wikimedia](#3-implementing-the-kafka-producer-for-wikimedia)
    1. [Code Overview](#31-code-overview)
    2. [Explanation](#32-explanation)
@@ -27,6 +27,10 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
       1. [onMessage Method](#421-onmessage-method)
       2. [onComment Methods](#422-oncomment-methods)
    3. [Key Takeaways](#43-key-takeaways)
+5. [Kafka Producer Acknowledgments](#5-kafka-producer-acknowledgments)
+   1. [Overview of Acks Setting](#51-overview-of-acks-setting)
+   2. [Acks Configurations](#52-acks-configurations)
+   
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -155,8 +159,6 @@ Once the containers are up and running, access Conduktor:
 
 
 ### Troubleshooting
-
-### Issue: "The server is unreachable. Make sure the host is correct and retry."
 
 If you encounter an error when trying to access Kafka or its services, and you receive the following message:
 
@@ -351,3 +353,35 @@ public class WikimediaChangeHandler implements EventHandler {
 - **Event Handling**: The `WikimediaChangeHandler` class is crucial for processing and forwarding events from the Wikimedia stream to Kafka.
 - **Error Handling**: Proper logging is implemented to track errors during the event streaming process.
 - **Resource Management**: Ensures that the Kafka producer is properly closed when the stream is closed, preventing resource leaks.
+---
+
+## 5. Kafka Producer Acknowledgments
+
+### 5.1 Overview of Acks Setting
+
+Kafka producers write data to the current leader broker for a partition. To ensure the message is considered successfully written, producers must specify an acknowledgment level (`acks`). This determines whether the message must be written to a minimum number of replicas before being confirmed.
+
+The `acks` setting has a default value that varies based on the Kafka version:
+
+- **Kafka < v3.0**: Default is `acks=1`.
+- **Kafka >= v3.0**: Default is `acks=all`.
+
+### 5.2 Acks Configurations
+
+1. **acks=0**:
+   ![Producer acks=0](./images/producer_acks_0.png)
+   - The producer considers the message as successfully sent once it is dispatched, without waiting for any broker acknowledgment.
+   - **Use Case**: Scenarios where losing some messages is acceptable, such as metrics collection. This setting provides the highest throughput as it minimizes network overhead.
+
+2. **acks=1**:
+   ![Producer acks=1](./images/producer_acks_1.png)
+   - The producer considers the message as successfully written when the leader broker acknowledges it.
+   - **Use Case**: Standard operations where losing data is not critical but replication is not guaranteed. If the leader fails before the replicas replicate the data, data loss may occur.
+
+3. **acks=all or -1**:
+   ![Producer acks=0](./images/producer_acks_all.png)
+   - The producer considers the message as successfully written when all in-sync replicas (ISR) have acknowledged it.
+   - **Use Case**: Scenarios requiring high data integrity. This setting ensures that the message is replicated across all in-sync replicas before being acknowledged. The broker setting `min.insync.replicas` controls the minimum number of replicas that must acknowledge the message.
+     
+   ![min.insync.replicas](./images/producer_acks_all_min_insync_replicas.png)
+   The `min.insync.replicas` can be configured at both the topic and broker levels. If the number of available replicas falls below this value, the broker will reject the write request, ensuring no data is lost even in the event of broker failures.
