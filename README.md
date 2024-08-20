@@ -153,6 +153,30 @@ Once the containers are up and running, access Conduktor:
 3. **Explore the Conduktor Platform**:
    - Manage your Kafka cluster, monitor streams, and utilize the full feature set of Conduktor.
 
+
+### Troubleshooting
+
+### Issue: "The server is unreachable. Make sure the host is correct and retry."
+
+If you encounter an error when trying to access Kafka or its services, and you receive the following message:
+
+```plaintext
+The server is unreachable. Make sure the host is correct and retry.
+```
+
+This issue may occur if the Kafka broker service is not properly reachable by other containers or services within the Docker network.
+
+#### Solution:
+
+1. **Restart the Kafka Docker Container**:
+
+   This error can typically be resolved by restarting the Kafka service to re-establish the necessary network connections.
+
+   To restart the Kafka container, run the following command:
+
+   ```bash
+   sudo docker restart kafka
+   ```
 ---
 
 ## 3. Implementing the Kafka Producer for Wikimedia
@@ -327,4 +351,3 @@ public class WikimediaChangeHandler implements EventHandler {
 - **Event Handling**: The `WikimediaChangeHandler` class is crucial for processing and forwarding events from the Wikimedia stream to Kafka.
 - **Error Handling**: Proper logging is implemented to track errors during the event streaming process.
 - **Resource Management**: Ensures that the Kafka producer is properly closed when the stream is closed, preventing resource leaks.
-
