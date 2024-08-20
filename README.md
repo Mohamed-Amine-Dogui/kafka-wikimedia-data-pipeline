@@ -30,6 +30,9 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
 5. [Kafka Producer Acknowledgments](#5-kafka-producer-acknowledgments)
    1. [Overview of Acks Setting](#51-overview-of-acks-setting)
    2. [Acks Configurations](#52-acks-configurations)
+6. [Kafka Topic Durability & Availability](#6-kafka-topic-durability--availability)
+   1. [Durability](#61-durability)
+   2. [Availability](#62-availability)
    
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -385,3 +388,28 @@ The `acks` setting has a default value that varies based on the Kafka version:
      
    ![min.insync.replicas](./images/producer_acks_all_min_insync_replicas.png)
    The `min.insync.replicas` can be configured at both the topic and broker levels. If the number of available replicas falls below this value, the broker will reject the write request, ensuring no data is lost even in the event of broker failures.
+---
+
+## 6. Kafka Topic Durability & Availability
+
+### 6.1 Durability
+
+For a topic with a replication factor of 3, topic data durability can withstand the loss of up to 2 brokers. As a general rule, with a replication factor of N, you can permanently lose up to N-1 brokers and still recover your data.
+
+### 6.2 Availability
+
+Availability depends on both the replication factor and the acknowledgment settings of the producer. To illustrate, consider a replication factor of 3:
+
+- **Reads**: As long as one partition is up and considered an ISR (In-Sync Replica), the topic will be available for reads.
+
+- **Writes**:
+   - **acks=0 & acks=1**: As long as one partition is up and considered an ISR, the topic will be available for writes.
+   - **acks=all**:
+      - **min.insync.replicas=1 (default)**: The topic must have at least 1 ISR partition up (including the leader), allowing for two brokers to be down.
+      - **min.insync.replicas=2**: The topic must have at least 2 ISR partitions up, so with a replication factor of 3, only one broker can be down. This guarantees that every write is replicated at least twice.
+      - **min.insync.replicas=3**: This setting would not be practical for a replication factor of 3, as it would not tolerate any broker failures.
+
+In summary, when `acks=all` with `replication.factor=N` and `min.insync.replicas=M`, you can tolerate N-M brokers going down while maintaining topic availability.
+
+- **Note**:
+The most popular combination for ensuring both data durability and availability is setting acks=all and min.insync.replicas=2 with a replication factor of 3. This configuration allows you to withstand the loss of one Kafka broker while maintaining good data durability and availability.
