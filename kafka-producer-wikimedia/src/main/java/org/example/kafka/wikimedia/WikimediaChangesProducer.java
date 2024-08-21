@@ -29,6 +29,13 @@ public class WikimediaChangesProducer {
 //        properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
 //        properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5"); // Keep as 5 for Kafka 2.0 >= 1.1, use 1 otherwise.
 
+
+        // set high throughput producer (at the expense of some latency and CPU usage)
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32 * 1024)); // 32KB
+
+
         // create the Producer
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 

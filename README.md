@@ -46,8 +46,16 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    1. [Understanding Kafka Producer Batching](#91-understanding-kafka-producer-batching)
       1. [Linger Time (`linger.ms`)](#911-linger-time-linger.ms)
       2. [Batch Size (`batch.size`)](#912-batch-size-batch.size)
-   2. [Advantages of Batching](#92-advantages-of-batching)
-   
+   2. [Key Takeaways](#92-key-takeaways)
+   3. [Advantages of Batching](#93-advantages-of-batching)
+10. [Kafka Producer Partitioner](#10-kafka-producer-partitioner)
+1. [Understanding Kafka Producer Partitioner](#101-understanding-kafka-producer-partitioner)
+   1. [Partitioner When `key != null`](#1011-partitioner-when-key--null)
+   2. [Partitioner When `key = null`](#1012-partitioner-when-key--null)
+2. [Round Robin Partitioner](#102-round-robin-partitioner)
+3. [Sticky Partitioner](#103-sticky-partitioner)
+4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
+
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -603,3 +611,52 @@ properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32 * 1
 - **Better Disk Utilization**: Compressed batches use less disk space, allowing Kafka to store more data.
 
 ---
+
+# 10. Kafka Producer Partitioner
+
+## 10.1 Understanding Kafka Producer Partitioner
+
+A partitioner in Kafka is responsible for determining which partition a specific message will be assigned to. Kafka producers use a partitioning logic to distribute messages across the available partitions of a topic. The choice of partitioning logic can significantly impact the performance and efficiency of message distribution, especially under high throughput conditions.
+
+### 10.1.1 Partitioner When `key != null`
+
+When a key is provided for a message, Kafka uses a hashing algorithm to determine the partition. In the default Kafka partitioner, the keys are hashed using the **murmur2** algorithm:
+
+```java
+targetPartition = Math.abs(Utils.murmur2(keyBytes)) % (numPartitions - 1)
+```
+
+- **How It Works**: The same key will always map to the same partition because the murmur2 algorithm is deterministic. This ensures that all messages with the same key are routed to the same partition.
+- **Impact of Adding Partitions**: If you increase the number of partitions for a topic, the partition assignment formula is altered, which can disrupt the key-based message ordering. Therefore, it's generally recommended to avoid adding partitions to an existing topic if key-based ordering is critical.
+
+### 10.1.2 Partitioner When `key = null`
+
+When no key is provided, the Kafka producer uses a default partitioning strategy. The strategy used depends on the Kafka version:
+
+- **Round Robin Partitioner (Kafka ≤ 2.3)**: Messages are distributed evenly across all partitions in a round-robin fashion. This results in smaller batches for each partition, leading to higher latency due to more network requests and smaller batch sizes.
+- **Sticky Partitioner (Kafka ≥ 2.4)**: To improve performance, Kafka 2.4 introduced the sticky partitioner. This partitioner "sticks" to a partition until the current batch is full or the `linger.ms` time has elapsed, then it moves on to the next partition. This results in larger batches and reduced latency.
+
+## 10.2 Round Robin Partitioner
+
+For Kafka versions 2.3 and below, the default partitioner sends messages to partitions in a round-robin fashion:
+
+- **Behavior**: The producer sends the first message to partition 1, the second message to partition 2, and so on, cycling through the available partitions.
+- **Challenges**: This can lead to inefficient batching because each partition may end up with smaller batches, especially when dealing with a large number of partitions. Smaller batches result in more frequent requests and higher latency.
+
+## 10.3 Sticky Partitioner
+
+Starting with Kafka 2.4, the sticky partitioner became the default strategy:
+
+- **Behavior**: The sticky partitioner sends all messages in a batch to the same partition. Once the batch is full or the `linger.ms` time expires, the producer switches to another partition.
+- **Advantages**:
+   - **Larger Batches**: Since all messages in a batch go to the same partition, the batch size is likely to be larger, which reduces the number of network requests.
+   - **Reduced Latency**: Larger batches mean fewer requests, which in turn reduces latency.
+   - **Balanced Distribution**: Over time, messages are still evenly distributed across partitions, ensuring the cluster remains balanced.
+
+### 10.3.1 Performance Improvements with Sticky Partitioner
+
+The introduction of the sticky partitioner leads to noticeable performance improvements, particularly in high-throughput environments:
+
+- **Reduced Latency**: The sticky partitioner significantly lowers latency compared to the round-robin approach, especially as the number of partitions increases.
+- **Scalability**: The sticky partitioner is more scalable, allowing Kafka to handle a larger number of partitions with better performance.
+----
