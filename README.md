@@ -420,9 +420,9 @@ In summary, when `acks=all` with `replication.factor=N` and `min.insync.replicas
 The most popular combination for ensuring both data durability and availability is setting acks=all and min.insync.replicas=2 with a replication factor of 3. This configuration allows you to withstand the loss of one Kafka broker while maintaining good data durability and availability.
 ---
 
-### 7. Producer Retries and Idempotent Producers
+## 7. Producer Retries and Idempotent Producers
 
-#### 7.1 Understanding Producer Retries
+### 7.1 Understanding Producer Retries
 
 When a Kafka producer sends messages to a broker, the broker can return either a success or an error code. These error codes fall into two categories:
 
@@ -432,7 +432,7 @@ When a Kafka producer sends messages to a broker, the broker can return either a
 
 To ensure that no messages are dropped when sent to Kafka, it is advisable to enable retries. However, retries should be configured carefully to ensure message ordering and delivery guarantees.
 
-##### 7.1.1 Producer Retry Configurations
+#### 7.1.1 Producer Retry Configurations
 
 ```java
 // create safe Producer
@@ -476,7 +476,7 @@ This diagram helps visualize the retry process and how various configurations in
 
 Finally, the `delivery.timeout.ms` is an overarching timeout ensuring that the total time spent in retries, batching, and inflight does not exceed this value.
 
-#### 7.2 Idempotent Producers
+## 7.2 Idempotent Producers
 
 When a producer sends a message to Kafka, there could be network errors that cause duplicate messages. Kafka introduced idempotent producers to handle such scenarios:
 
