@@ -3,6 +3,7 @@
 This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
 ### Table of Contents
+
 1. [Kafka Wikimedia Data Pipeline Overview](#1-kafka-wikimedia-data-pipeline-overview)
 2. [Setting Up the Environment](#2-setting-up-the-environment)
    1. [Prerequisites](#21-prerequisites)
@@ -33,6 +34,10 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
 6. [Kafka Topic Durability & Availability](#6-kafka-topic-durability--availability)
    1. [Durability](#61-durability)
    2. [Availability](#62-availability)
+7. [Producer Retries and Idempotent Producers](#7-producer-retries-and-idempotent-producers)
+   1. [Understanding Producer Retries](#71-understanding-producer-retries)
+      1. [Producer Retry Configurations](#711-producer-retry-configurations)
+   2. [Idempotent Producers](#72-idempotent-producers)
    
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -413,3 +418,82 @@ In summary, when `acks=all` with `replication.factor=N` and `min.insync.replicas
 
 - **Note**:
 The most popular combination for ensuring both data durability and availability is setting acks=all and min.insync.replicas=2 with a replication factor of 3. This configuration allows you to withstand the loss of one Kafka broker while maintaining good data durability and availability.
+---
+Certainly! Below is the updated section, organized as you requested, with the appropriate headers and subheaders:
+
+---
+
+### 7. Producer Retries and Idempotent Producers
+
+#### 7.1 Understanding Producer Retries
+
+When a Kafka producer sends messages to a broker, the broker can return either a success or an error code. These error codes fall into two categories:
+
+- **Retriable Errors**: Errors that can be resolved by retrying the message. For example, if the broker returns a `NotEnoughReplicasException`, the producer can attempt to resend the message, as the replica brokers might come back online and the second attempt might succeed.
+
+- **Non-Retriable Errors**: Errors that cannot be resolved by retrying. For example, if the broker returns an `INVALID_CONFIG` exception, retrying the same request will not change the outcome.
+
+To ensure that no messages are dropped when sent to Kafka, it is advisable to enable retries. However, retries should be configured carefully to ensure message ordering and delivery guarantees.
+
+##### 7.1.1 Producer Retry Configurations
+
+```java
+// create safe Producer
+properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
+properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
+properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5"); // Keep as 5 for Kafka 2.0 >= 1.1, use 1 otherwise.
+```
+
+1. **`retries`**:
+   - This setting determines how many times the producer will attempt to send a message before marking it as failed.
+   - **Default Values**:
+      - `0` for Kafka ≤ 2.0
+      - `MAX_INT` (2147483647) for Kafka ≥ 2.1
+   - It's generally recommended to leave this configuration unset and use `delivery.timeout.ms` to control retry behavior.
+
+2. **`delivery.timeout.ms`**:
+   - If `retries > 0`, for example, `retries = 2147483647`, the producer won't retry forever; it is bounded by a timeout.
+   - **Recommended Value**: `delivery.timeout.ms=120000` (2 minutes).
+   - This ensures that records will fail if they can't be delivered within the specified timeout.
+
+3. **`retry.backoff.ms`**:
+   - This configuration controls how long the producer waits between retries.
+   - **Default Value**: 100ms.
+
+4. **`max.in.flight.requests.per.connection`**:
+   - Allowing retries without setting `max.in.flight.requests.per.connection` to 1 can potentially change the order of records.
+   - **Recommendation**: Set this to `1` if you rely on key-based ordering to guarantee that Kafka preserves message order even if retries are required.
+
+The diagram below illustrates the Kafka producer retry process:
+
+![Kafka Producer Retries Process](./images/kafka-producer-retries.png)
+
+This diagram helps visualize the retry process and how various configurations interact:
+
+- **Send**: The producer attempts to send a message.
+- **Batching**: The message is batched according to the `linger.ms` setting.
+- **Await Send**: The message awaits send confirmation.
+- **Retries**: If an error occurs, the producer waits for `retry.backoff.ms` and retries sending the message.
+- **Inflight**: Messages are in transit and the total time is controlled by `request.timeout.ms`.
+
+Finally, the `delivery.timeout.ms` is an overarching timeout ensuring that the total time spent in retries, batching, and inflight does not exceed this value.
+
+#### 7.2 Idempotent Producers
+
+When a producer sends a message to Kafka, there could be network errors that cause duplicate messages. Kafka introduced idempotent producers to handle such scenarios:
+
+- **Idempotent Producer**: This ensures that even if the producer retries sending a message due to network issues, Kafka will recognize the duplicate and prevent it from being committed multiple times.
+
+With Kafka 3.0 and later, the following defaults ensure a safe and reliable producer configuration:
+
+- `acks = all`
+- `enable.idempotence = true`
+- `retries = MAX_INT`
+- `max.in.flight.requests.per.connection = 5` (for Kafka >= 2.0) or `1` (for older versions).
+
+These settings help maintain message order, ensure data integrity, and prevent duplicates.
+
+In summary, for Kafka 3.0 and later, the producer is safe by default, and you do not need to make any changes. For earlier versions, it is recommended to manually set the configurations to ensure the reliability of your data pipeline.
+
+---
