@@ -419,9 +419,6 @@ In summary, when `acks=all` with `replication.factor=N` and `min.insync.replicas
 - **Note**:
 The most popular combination for ensuring both data durability and availability is setting acks=all and min.insync.replicas=2 with a replication factor of 3. This configuration allows you to withstand the loss of one Kafka broker while maintaining good data durability and availability.
 ---
-Certainly! Below is the updated section, organized as you requested, with the appropriate headers and subheaders:
-
----
 
 ### 7. Producer Retries and Idempotent Producers
 
