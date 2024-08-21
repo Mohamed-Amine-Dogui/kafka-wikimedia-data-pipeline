@@ -38,6 +38,10 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    1. [Understanding Producer Retries](#71-understanding-producer-retries)
       1. [Producer Retry Configurations](#711-producer-retry-configurations)
    2. [Idempotent Producers](#72-idempotent-producers)
+8. [Kafka Message Compression](#8-kafka-message-compression)
+   1. [Understanding Kafka Message Compression](#81-understanding-kafka-message-compression)
+      1. [Producer-Level Message Compression](#811-producer-level-message-compression)
+      2. [Broker-Level Compression](#812-broker-level-compression)
    
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -494,3 +498,58 @@ These settings help maintain message order, ensure data integrity, and prevent d
 In summary, for Kafka 3.0 and later, the producer is safe by default, and you do not need to make any changes. For earlier versions, it is recommended to manually set the configurations to ensure the reliability of your data pipeline.
 
 ---
+
+# 8. Kafka Message Compression
+
+## 8.1 Understanding Kafka Message Compression
+
+When sending data to Kafka, producers often handle text-based data formats such as JSON, which can be quite large. To optimize performance, it’s crucial to apply compression at the producer level. By default, Kafka producer messages are sent uncompressed, which can lead to inefficiencies in both network utilization and storage.
+
+Kafka supports two types of message compression: producer-side compression and broker-side compression. Each method has its benefits and specific use cases.
+
+### 8.1.1 Producer-Level Message Compression
+
+Producers can choose to compress messages before sending them to Kafka by configuring the `compression.type` setting. This setting has several options:
+
+- **none**: No compression is applied (this is the default setting).
+- **gzip**: Standard gzip compression.
+- **lz4**: LZ4 compression, optimized for speed.
+- **snappy**: Snappy compression, offering a good balance between speed and compression ratio.
+- **zstd**: Zstandard compression, available in Kafka 2.1 and later, provides better compression ratios at a similar or faster speed compared to gzip.
+
+When enabled, compression happens at the batch level, meaning all messages in a single producer batch are compressed together. This approach increases the efficiency of compression, particularly when dealing with large batches, and can significantly reduce the size of the messages being sent to Kafka.
+
+**Advantages of Producer-Level Compression**:
+
+- **Reduced Network Utilization**: Compressed messages are smaller, which reduces the amount of data sent over the network, leading to less latency and better throughput.
+- **Improved Disk Utilization**: Smaller message sizes mean that Kafka can store more data on disk, which is particularly beneficial when dealing with large volumes of data.
+
+**Trade-offs**:
+
+- **Increased CPU Usage**: Both the producer and consumer must commit additional CPU resources to compress and decompress the messages. However, this overhead is often minimal compared to the benefits gained in network and storage efficiency.
+
+### 8.1.2 Broker-Level Compression
+
+Compression can also be configured at the broker or topic level. This setting allows Kafka to handle compression based on the `compression.type` defined for a specific topic.
+
+- **`compression.type=producer`**: The broker takes the compressed batch from the producer and writes it directly to the topic’s log file without recompressing the data. This is the default setting and is optimal because it avoids unnecessary recompression.
+
+- **Topic-Specific Compression**: If a topic is configured with a specific compression type (e.g., `lz4`), and this type matches the producer's compression setting, the broker will write the messages as they are. However, if the producer uses a different compression method, the broker will decompress the messages and then recompress them according to the topic's specified compression type.
+
+**Advantages of Broker-Level Compression**:
+
+- **Flexibility**: It allows central control over compression settings at the topic level, useful when you don’t have control over the producer’s settings or when you want uniform compression across all messages in a topic.
+
+- **Trade-offs**: Similar to producer-level compression, broker-side compression consumes additional CPU cycles, particularly if the broker has to decompress and recompress messages.
+
+---
+
+**Best Practices for Kafka Message Compression**:
+
+1. **Enable Compression in Production**: Always use compression in production environments, especially when dealing with high-throughput streams, to optimize network and storage efficiency.
+
+2. **Optimize for Speed and Compression Ratio**: Consider using `snappy` or `lz4` for an optimal balance between speed and compression efficiency.
+
+3. **Batch Size and Linger Time**: Adjusting the `batch.size` and `linger.ms` settings can help create larger batches of messages, which improves the efficiency of compression.
+
+4. **Testing Compression Settings**: Always test different compression settings in your environment before applying them to production to ensure they meet your performance requirements.
