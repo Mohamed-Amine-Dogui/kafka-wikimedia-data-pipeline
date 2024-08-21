@@ -42,6 +42,11 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    1. [Understanding Kafka Message Compression](#81-understanding-kafka-message-compression)
       1. [Producer-Level Message Compression](#811-producer-level-message-compression)
       2. [Broker-Level Compression](#812-broker-level-compression)
+9. [Kafka Producer Batching](#9-kafka-producer-batching)
+   1. [Understanding Kafka Producer Batching](#91-understanding-kafka-producer-batching)
+      1. [Linger Time (`linger.ms`)](#911-linger-time-linger.ms)
+      2. [Batch Size (`batch.size`)](#912-batch-size-batch.size)
+   2. [Advantages of Batching](#92-advantages-of-batching)
    
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -553,3 +558,48 @@ Compression can also be configured at the broker or topic level. This setting al
 3. **Batch Size and Linger Time**: Adjusting the `batch.size` and `linger.ms` settings can help create larger batches of messages, which improves the efficiency of compression.
 
 4. **Testing Compression Settings**: Always test different compression settings in your environment before applying them to production to ensure they meet your performance requirements.
+
+---
+
+# 9. Kafka Producer Batching
+
+## 9.1 Understanding Kafka Producer Batching
+
+Kafka producers, by default, attempt to send records as soon as possible. However, to optimize performance and resource utilization, Kafka introduces the concept of message batching. This feature is controlled by two main settings: `linger.ms` and `batch.size`.
+
+### 9.1.1 Linger Time (`linger.ms`)
+
+The `linger.ms` setting controls how long the producer is willing to wait before sending a batch of messages. By default, this value is set to `0`, meaning the producer will send messages immediately. However, introducing a small delay by setting `linger.ms` to a value such as `20ms` can significantly improve throughput and compression efficiency.
+
+- **How It Works**: If `linger.ms` is greater than `0`, the producer waits for the specified time before sending the batch, allowing more messages to accumulate and be sent together.
+- **Benefits**: This delay increases the chances of messages being batched together, which improves network and disk efficiency due to higher compression ratios and fewer network trips.
+
+### 9.1.2 Batch Size (`batch.size`)
+
+The `batch.size` setting determines the maximum number of bytes that can be included in a batch. The default value is `16KB`, but increasing this size to `32KB` or `64KB` can further improve compression and throughput.
+
+- **How It Works**: If a batch reaches its `batch.size` before the `linger.ms` period ends, the producer sends the batch immediately.
+- **Considerations**: Each partition has its own batch, so setting `batch.size` too high may lead to excessive memory usage. It’s crucial to monitor the average batch size using Kafka producer metrics to avoid performance issues.
+
+---
+**Key Takeaways**:
+
+- **Increase `linger.ms`**: This allows the producer to wait a few milliseconds before sending batches, improving throughput and compression.
+- **Increase `batch.size`**: If your producer is sending full batches and you have available memory, consider increasing the batch size to improve efficiency.
+
+A high-throughput Kafka producer might be configured as follows:
+
+```java
+// High throughput producer (at the expense of some latency and CPU usage)
+properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32 * 1024)); // 32KB
+```
+
+## 9.3 Advantages of Batching
+
+- **Higher Compression Ratios**: Batching messages together increases the effectiveness of compression, reducing the size of data sent over the network and stored on disk.
+- **Improved Network Efficiency**: Larger batches reduce the number of network trips, decreasing latency and increasing throughput.
+- **Better Disk Utilization**: Compressed batches use less disk space, allowing Kafka to store more data.
+
+---
