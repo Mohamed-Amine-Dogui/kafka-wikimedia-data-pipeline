@@ -64,9 +64,10 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        3. [Retrieving Documents](#1133-retrieving-documents)
        4. [Deleting Documents](#1134-deleting-documents)
        5. [Deleting the Index](#1135-deleting-the-index)
-12. [Implementing the OpenSearch Consumer: Detailed Setup and Configuration](#114-implementing-the-opensearch-consumer-detailed-setup-and-configuration)
-   1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
-   2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+12. [Implementing the OpenSearch Consumer](#12-implementing-the-openSearch-consumer)
+    1. [Detailed Setup and Configuration](#121-implementing-the-opensearch-consumer-detailed-setup-and-configuration)
+    2. [Creating the OpenSearch Client](#122-creating-the-opensearch-client)
+    3. [Checking and Creating an Index in OpenSearch](#123-checking-and-creating-an-index-in-opensearch)
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
