@@ -21,10 +21,10 @@ dependencies {
     implementation  'org.slf4j:slf4j-simple:2.0.16'
 
     // https://search.maven.org/artifact/org.opensearch.client/opensearch-rest-high-level-client
-    implementation 'org.opensearch.client:opensearch-rest-high-level-client:2.16.0'
+    implementation 'org.opensearch.client:opensearch-rest-high-level-client:1.2.4'
 
     // https://central.sonatype.com/artifact/com.google.code.gson/gson
-    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.code.gson:gson:2.9.0'
 
 }
 test {

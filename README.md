@@ -49,12 +49,13 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
    2. [Key Takeaways](#92-key-takeaways)
    3. [Advantages of Batching](#93-advantages-of-batching)
 10. [Kafka Producer Partitioner](#10-kafka-producer-partitioner)
-1. [Understanding Kafka Producer Partitioner](#101-understanding-kafka-producer-partitioner)
-   1. [Partitioner When `key != null`](#1011-partitioner-when-key--null)
-   2. [Partitioner When `key = null`](#1012-partitioner-when-key--null)
-2. [Round Robin Partitioner](#102-round-robin-partitioner)
-3. [Sticky Partitioner](#103-sticky-partitioner)
-4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
+    1. [Understanding Kafka Producer Partitioner](#101-understanding-kafka-producer-partitioner)
+       1. [Partitioner When `key != null`](#1011-partitioner-when-key--null)
+       2. [Partitioner When `key = null`](#1012-partitioner-when-key--null)
+    2. [Round Robin Partitioner](#102-round-robin-partitioner)
+    3. [Sticky Partitioner](#103-sticky-partitioner)
+    4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
+11. [Implementing the OpenSearch Consumer](#11-implementing-the-opensearch-consumer)
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -659,4 +660,56 @@ The introduction of the sticky partitioner leads to noticeable performance impro
 
 - **Reduced Latency**: The sticky partitioner significantly lowers latency compared to the round-robin approach, especially as the number of partitions increases.
 - **Scalability**: The sticky partitioner is more scalable, allowing Kafka to handle a larger number of partitions with better performance.
-----
+
+---
+
+## 11. Implementing the OpenSearch Consumer
+
+In this section, we're going to set up a Kafka consumer that integrates with OpenSearch, enabling data indexing and search capabilities. Here's how to get it up and running:
+
+### 11.1 Project Setup
+
+1. **Create a new module**: `KafkaConsumerOpenSearch`.
+2. **Add dependencies**:
+   - Kafka clients
+   - OpenSearch REST High-Level Client
+   - GSON for JSON processing
+
+### 11.2 Running OpenSearch with Docker
+
+For those using Docker:
+- Navigate to your project directory and start your services:
+  ```bash
+  cd ~/Documents/projects/kafka-wikimedia-data-pipeline/kafka-consumer-opensearch
+  sudo docker compose up -d
+  ```
+- Verify OpenSearch is running by navigating to `http://localhost:9200/`.
+
+### 11.3 Accessing OpenSearch Dashboards
+
+- Open `http://localhost:5601/app/dev_tools#/console`.
+- Use the console to run commands against your OpenSearch instance:
+  ```
+  GET /
+  ```
+
+and you will get this response: 
+  ```
+{
+  "name" : "9d6ad5027a1d",
+  "cluster_name" : "docker-cluster",
+  "cluster_uuid" : "yyzuxaXeQQqdVsqvuzaiEQ",
+  "version" : {
+    "number" : "7.10.2",
+    "build_type" : "tar",
+    "build_hash" : "e505b10357c03ae8d26d675172402f2f2144ef0f",
+    "build_date" : "2022-01-14T03:38:06.881862Z",
+    "build_snapshot" : false,
+    "lucene_version" : "8.10.1",
+    "minimum_wire_compatibility_version" : "6.8.0",
+    "minimum_index_compatibility_version" : "6.0.0-beta1"
+  },
+  "tagline" : "The OpenSearch Project: https://opensearch.org/"
+}
+  ```
+
