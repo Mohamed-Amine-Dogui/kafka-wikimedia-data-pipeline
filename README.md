@@ -1,4 +1,4 @@
-**# Kafka Wikimedia Data Pipeline
+# Kafka Wikimedia Data Pipeline
 
 This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
