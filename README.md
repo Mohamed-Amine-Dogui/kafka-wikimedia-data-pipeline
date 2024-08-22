@@ -55,7 +55,7 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
     2. [Round Robin Partitioner](#102-round-robin-partitioner)
     3. [Sticky Partitioner](#103-sticky-partitioner)
     4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
-11. [Implementing the OpenSearch Consumer](#11-implementing-the-opensearch-consumer)
+11. [OpenSearch Consumer](#11-opensearch-consumer)
     1. [Project Setup](#111-project-setup)
     2. [Running OpenSearch with Docker](#112-running-opensearch-with-docker)
     3. [Opensearch API Operation](#113-opensearch-api-operation)
@@ -64,7 +64,10 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        3. [Retrieving Documents](#1133-retrieving-documents)
        4. [Deleting Documents](#1134-deleting-documents)
        5. [Deleting the Index](#1135-deleting-the-index)
-   
+12. [Implementing the OpenSearch Consumer: Detailed Setup and Configuration](#114-implementing-the-opensearch-consumer-detailed-setup-and-configuration)
+   1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
+   2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -671,7 +674,7 @@ The introduction of the sticky partitioner leads to noticeable performance impro
 
 ---
 
-# 11. Implementing the OpenSearch Consumer
+# 11. OpenSearch Consumer
 
 In this section, we're going to set up a Kafka consumer that integrates with OpenSearch, enabling data indexing and search capabilities. Here's how to get it up and running:
 
@@ -836,3 +839,59 @@ You'll receive an acknowledgment:
   "acknowledged": true
 }
 ```
+Here's a structured and detailed new section to add to your README, focusing on implementing the OpenSearch Consumer within your Kafka Wikimedia Data Pipeline. This section incorporates the provided script and explanation:
+
+## 11.4 Implementing the OpenSearch Consumer
+
+In this section, we will guide you through the process of setting up and implementing the OpenSearch Consumer which connects to your Kafka data pipeline. The OpenSearch Consumer is responsible for indexing and searching the data streamed from Wikimedia.
+
+### 11.4.1 Creating the OpenSearch Client
+
+Before integrating Kafka with OpenSearch, it's essential to establish a connection with the OpenSearch server. We start by creating an OpenSearch Client using the `RestHighLevelClient`. This client will handle all communications between our Java application and the OpenSearch server.
+
+#### Code Snippet for OpenSearch Client Creation:
+
+```java
+public static RestHighLevelClient createOpenSearchClient() {
+    String connectionString = "http://localhost:9200"; // Local OpenSearch instance
+    URI connUri = URI.create(connectionString);
+    String userInfo = connUri.getUserInfo();
+
+    if (userInfo == null) {
+        return new RestHighLevelClient(
+                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), "http")));
+    } else {
+        String[] auth = userInfo.split(":");
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY, 
+            new UsernamePasswordCredentials(auth[0], auth[1]));
+
+        return new RestHighLevelClient(
+                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), connUri.getScheme()))
+                        .setHttpClientConfigCallback(httpAsyncClientBuilder -> 
+                            httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+                                    .setKeepAliveStrategy(new DefaultConnectionKeepAliveStrategy())));
+    }
+}
+```
+
+### 11.4.2 Checking and Creating an Index in OpenSearch
+
+Once the client is set up, the next step is to ensure that a specific index exists in OpenSearch before sending data to it. If the index does not exist, it should be created.
+
+#### Code Example for Index Management:
+
+```java
+public static void ensureIndexExists(RestHighLevelClient client, String indexName) throws IOException {
+    boolean indexExists = client.indices().exists(new GetIndexRequest(indexName), RequestOptions.DEFAULT);
+
+    if (!indexExists) {
+        CreateIndexRequest request = new CreateIndexRequest(indexName);
+        client.indices().create(request, RequestOptions.DEFAULT);
+        System.out.println("Index " + indexName + " created successfully.");
+    } else {
+        System.out.println("Index " + indexName + " already exists.");
+    }
+}
+```
+
