@@ -1,4 +1,4 @@
-# Kafka Wikimedia Data Pipeline
+**# Kafka Wikimedia Data Pipeline
 
 This project is a hands-on guide to building a Kafka data pipeline that streams live data from Wikimedia into Apache Kafka, processes it, and sends it to OpenSearch for indexing and analysis. You'll gain practical experience with Kafka producers, consumers, and advanced Kafka features through this real-world application.
 
@@ -56,7 +56,15 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
     3. [Sticky Partitioner](#103-sticky-partitioner)
     4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
 11. [Implementing the OpenSearch Consumer](#11-implementing-the-opensearch-consumer)
-
+    1. [Project Setup](#111-project-setup)
+    2. [Running OpenSearch with Docker](#112-running-opensearch-with-docker)
+    3. [Opensearch API Operation](#113-opensearch-api-operation)
+       1. [Creating an Index](#1131-creating-an-index)
+       2. [Adding Documents](#1132-adding-documents)
+       3. [Retrieving Documents](#1133-retrieving-documents)
+       4. [Deleting Documents](#1134-deleting-documents)
+       5. [Deleting the Index](#1135-deleting-the-index)
+   
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -663,11 +671,11 @@ The introduction of the sticky partitioner leads to noticeable performance impro
 
 ---
 
-## 11. Implementing the OpenSearch Consumer
+# 11. Implementing the OpenSearch Consumer
 
 In this section, we're going to set up a Kafka consumer that integrates with OpenSearch, enabling data indexing and search capabilities. Here's how to get it up and running:
 
-### 11.1 Project Setup
+## 11.1 Project Setup
 
 1. **Create a new module**: `KafkaConsumerOpenSearch`.
 2. **Add dependencies**:
@@ -675,7 +683,7 @@ In this section, we're going to set up a Kafka consumer that integrates with Ope
    - OpenSearch REST High-Level Client
    - GSON for JSON processing
 
-### 11.2 Running OpenSearch with Docker
+## 11.2 Running OpenSearch with Docker
 
 For those using Docker:
 - Navigate to your project directory and start your services:
@@ -685,7 +693,7 @@ For those using Docker:
   ```
 - Verify OpenSearch is running by navigating to `http://localhost:9200/`.
 
-### 11.3 Accessing OpenSearch Dashboards
+## 11.3 Opensearch API Operation
 
 - Open `http://localhost:5601/app/dev_tools#/console`.
 - Use the console to run commands against your OpenSearch instance:
@@ -713,3 +721,118 @@ and you will get this response:
 }
   ```
 
+### 11.3.1 Creating an Index
+
+To create an index in OpenSearch, which is necessary for storing data, execute the following command:
+
+```http
+PUT /my-first-index
+```
+
+You should receive a response like this:
+
+```json
+{
+  "acknowledged": true,
+  "shards_acknowledged": true,
+  "index": "my-first-index"
+}
+```
+
+### 11.3.2 Adding Documents
+
+Add documents to your index by specifying a unique ID for each document:
+
+```http
+PUT /my-first-index/_doc/1
+{
+  "Description": "The past resembles the future more than one drop of water resembles another."
+}
+```
+
+Successful document addition will return:
+
+```json
+{
+  "_index": "my-first-index",
+  "_type": "_doc",
+  "_id": "1",
+  "_version": 1,
+  "result": "created",
+  "_shards": {
+    "total": 2,
+    "successful": 1,
+    "failed": 0
+  },
+  "_seq_no": 0,
+  "_primary_term": 1
+}
+```
+
+### 11.3.3 Retrieving Documents
+
+Retrieve the document with ID 1 from your index:
+
+```http
+GET /my-first-index/_doc/1
+```
+
+This will show the document details:
+
+```json
+{
+  "_index": "my-first-index",
+  "_type": "_doc",
+  "_id": "1",
+  "_version": 1,
+  "_seq_no": 0,
+  "_primary_term": 1,
+  "found": true,
+  "_source": {
+    "Description": "To be or not to be, that is the question."
+  }
+}
+```
+
+### 11.3.4 Deleting Documents
+
+To remove a specific document from the index:
+
+```http
+DELETE /my-first-index/_doc/1
+```
+
+Confirmation of document deletion:
+
+```json
+{
+  "_index": "my-first-index",
+  "_type": "_doc",
+  "_id": "1",
+  "_version": 2,
+  "result": "deleted",
+  "_shards": {
+    "total": 2,
+    "successful": 1,
+    "failed": 0
+  },
+  "_seq_no": 1,
+  "_primary_term": 1
+}
+```
+
+### 11.3.5 Deleting the Index
+
+Finally, to completely remove the index:
+
+```http
+DELETE /my-first-index
+```
+
+You'll receive an acknowledgment:
+
+```json
+{
+  "acknowledged": true
+}
+```
