@@ -64,14 +64,14 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        3. [Retrieving Documents](#1133-retrieving-documents)
        4. [Deleting Documents](#1134-deleting-documents)
        5. [Deleting the Index](#1135-deleting-the-index)
-       4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
-          1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
-          2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
-          3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
-          4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
-          5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
-          6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
-          7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
+    4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
+       1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
+       2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+       3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
+       4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
+       5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
+       6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
+       7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
 
 
 
