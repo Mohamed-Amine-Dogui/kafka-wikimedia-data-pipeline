@@ -1004,27 +1004,65 @@ When integrating Kafka with external systems like OpenSearch, ensuring idempoten
 Here's how you can implement an OpenSearch consumer that uses the second strategy to ensure idempotent processing:
 
 ```java
-public static void main(String[] args) throws IOException {
-    RestHighLevelClient openSearchClient = createOpenSearchClient();
-    KafkaConsumer<String, String> consumer = createKafkaConsumer();
-    consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
+    public static void main(String[] args) throws IOException {
 
-    try {
-        while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
-            for (ConsumerRecord<String, String> record : records) {
-                String id = extractId(record.value());
-                IndexRequest indexRequest = new IndexRequest("wikimedia")
-                        .source(record.value(), XContentType.JSON)
-                        .id(id);
+        Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
 
-                IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
-                log.info("Document indexed with ID: " + response.getId());
-            }
+        // first create an OpenSearch Client
+        RestHighLevelClient openSearchClient = createOpenSearchClient();
+
+        // create our Kafka Client
+        KafkaConsumer<String, String> consumer = createKafkaConsumer();
+
+
+        // we need to create the index on OpenSearch if it doesn't exist already
+
+        try (openSearchClient; consumer) {
+
+           boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
+   
+           if (!indexExists) {
+              CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
+              openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+              log.info("The Wikimedia Index has been created!");
+              } else {
+              log.info("The Wikimedia Index already exits");
+           }
+   
+           // we subscribe the consumer
+           consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
+   
+              while (true) {
+      
+                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
+         
+                 int recordCount = records.count();
+                 log.info("Received " + recordCount + " record(s)");
+         
+         
+                 for (ConsumerRecord<String, String> record : records) {
+         
+                    // send the record into OpenSearch
+            
+                    /*//strategy 1 : define an ID using kafka Record coordinates
+                    String id = record.topic() + "_" + record.partition() + "_" + record.offset();*/
+                    
+                    try {
+                       // strategy 2 : Extract the id field from the message that I will send (from the Json value) with the function extractId()
+               
+                       String id = extractId(record.value());
+               
+                       IndexRequest indexRequest = new IndexRequest("wikimedia")
+                       .source(record.value(), XContentType.JSON)
+                       .id(id);
+               
+                       IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                       log.info("Document indexed with ID: " + response.getId());
+                       } catch (Exception e){}
+                    }
+      
+              }
+
         }
-    } finally {
-        consumer.close();
-        openSearchClient.close();
-    }
 }
 ```
