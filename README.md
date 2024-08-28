@@ -73,7 +73,7 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
        7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
 
-
+   
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -882,33 +882,7 @@ public static RestHighLevelClient createOpenSearchClient() {
 ```
 
 
-### 11.4.2 Create an Opensearch Client
-
-First, we create a `RestHighLevelClient` to connect to OpenSearch. This client manages all communications with the OpenSearch server:
-
-```java
-public static RestHighLevelClient createOpenSearchClient() {
-    String connectionString = "http://localhost:9200"; // URL of the local OpenSearch instance
-    URI connUri = URI.create(connectionString);
-    String userInfo = connUri.getUserInfo();
-    if (userInfo == null) {
-        return new RestHighLevelClient(
-                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), "http")));
-    } else {
-        String[] auth = userInfo.split(":");
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY, 
-            new UsernamePasswordCredentials(auth[0], auth[1]));
-        return new RestHighLevelClient(
-                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), connUri.getScheme()))
-                        .setHttpClientConfigCallback(httpAsyncClientBuilder -> 
-                            httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
-                                    .setKeepAliveStrategy(new DefaultConnectionKeepAliveStrategy())));
-    }
-}
-```
-
-### 11.4.3 Creating the Kafka Consumer
+### 11.4.2 Creating the Kafka Consumer
 
 The Kafka Consumer is configured to subscribe to the `wikimedia.recentchange` topic and read records. Here's how you can set it up:
 
@@ -924,7 +898,7 @@ private static KafkaConsumer<String, String> createKafkaConsumer() {
 }
 ```
 
-### 11.4.4 Checking and Creating an Index in OpenSearch
+### 11.4.3 Checking and Creating an Index in OpenSearch
 
 Before data ingestion, ensure the OpenSearch index exists, or create it if it doesn't:
 
@@ -939,7 +913,7 @@ if (!indexExists) {
 }
 ```
 
-### 11.4.5 Consuming and Indexing Data
+### 11.4.4 Consuming and Indexing Data
 
 After setting up the client and ensuring the index exists, the consumer reads data from Kafka and indexes it into OpenSearch:
 
@@ -956,7 +930,7 @@ while (true) {
 ```
 
 
-### 11.4.6 Verifying Data Insertion in OpenSearch
+### 11.4.5 Verifying Data Insertion in OpenSearch
 
 Once data is indexed in OpenSearch, you can verify the document by querying it directly in the OpenSearch Dashboard. To trace the data, check for the document ID logged in your IntelliJ terminal, which will look similar to this:
 
@@ -981,18 +955,4 @@ Once data is indexed in OpenSearch, you can verify the document by querying it d
 
 3. **View the Document**:
    - The response will display the JSON document that was sent from Apache Kafka to OpenSearch, confirming successful indexing:
-     ```json
-     {
-       "_index": "wikimedia",
-       "_type": "_doc",
-       "_id": "YqZ9epEBghSTW3VMMiZP",
-       "_version": 1,
-       "found": true,
-       "_source": {
-         "field1": "value1",
-         "field2": "value2"
-         // other fields from your JSON document
-       }
-     }
-     ```
    - The `_source` field contains the actual data that was indexed in OpenSearch, verifying that the data stream from Kafka was successfully captured and stored.
