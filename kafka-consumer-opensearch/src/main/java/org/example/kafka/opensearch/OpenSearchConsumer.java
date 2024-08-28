@@ -13,6 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.protocol.types.Field;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
@@ -88,6 +89,16 @@ public class OpenSearchConsumer {
 
     }
 
+    private static String extractId(String json) {
+        // gson library
+        return JsonParser.parseString(json)
+                .getAsJsonObject()
+                .get("meta")
+                .getAsJsonObject()
+                .get("id")
+                .getAsString();
+    }
+
 
     public static void main(String[] args) throws IOException {
 
@@ -129,12 +140,21 @@ public class OpenSearchConsumer {
 
                     // send the record into OpenSearch
 
+                    /*//strategy 1 : define an ID using kafka Record coordinates
+                    String id = record.topic() + "_" + record.partition() + "_" + record.offset();*/
+
+
                     try {
+                        // strategy 2 : Extract the id field from the message that I will send (from the Json value) with the function extractId()
+
+                        String id = extractId(record.value());
+
                         IndexRequest indexRequest = new IndexRequest("wikimedia")
-                                .source(record.value(), XContentType.JSON);
+                                .source(record.value(), XContentType.JSON)
+                                .id(id);
 
                         IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
-                        log.info(response.getId());
+                        log.info("Document indexed with ID: " + response.getId());
                     } catch (Exception e){
 
                     }
@@ -143,6 +163,9 @@ public class OpenSearchConsumer {
                 }
 
             }
+
         }
     }
+
+
 }

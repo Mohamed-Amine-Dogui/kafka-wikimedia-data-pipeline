@@ -72,8 +72,12 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
        6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
        7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
+12. [Delivery Semantics in Apache Kafka](#115-delivery-semantics-in-apache-kafka)
+    1. [At-Most-Once](#1151-at-most-once)
+    2. [At-Least-Once](#1152-at-least-once)
+    3. [Exactly-Once](#1153-exactly-once)
+    4. [Implementing Idempotent Consumers](#1154-implementing-idempotent-consumers)
 
-   
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
 In this project, you'll build a Kafka-based data pipeline to stream, process, and analyze data from Wikimedia. The project involves using Kafka producers and consumers to handle real-time data, integrating with OpenSearch for advanced analytics.
@@ -956,3 +960,71 @@ Once data is indexed in OpenSearch, you can verify the document by querying it d
 3. **View the Document**:
    - The response will display the JSON document that was sent from Apache Kafka to OpenSearch, confirming successful indexing:
    - The `_source` field contains the actual data that was indexed in OpenSearch, verifying that the data stream from Kafka was successfully captured and stored.
+
+---
+
+## 11.5 Delivery Semantics in Apache Kafka
+
+Apache Kafka supports three types of delivery semantics that dictate how reliably messages are delivered:
+
+1. **At-Most-Once**
+   - Messages are delivered at most once, meaning they may be lost but won't be delivered twice. This happens when offsets are committed as soon as a batch of messages is received, regardless of whether they have been processed or not. If a consumer fails after committing its offset but before processing all messages, some messages may not be processed at all.
+
+2. **At-Least-Once (Preferred)**
+   - Messages are delivered at least once, meaning they may be delivered more than once if a consumer retries after a failure. This requires processing to be idempotent because the same message could be processed multiple times. Messages are committed only after they are processed, ensuring no data loss but potentially leading to duplicate processing.
+
+3. **Exactly-Once**
+   - Messages are delivered exactly once, which is the most desirable but the most challenging to achieve. This is typically only possible when both the producer and consumer are fully controlled and able to participate in a coordinated transaction. Kafka's transactional APIs, especially with Kafka Streams, facilitate exactly-once semantics by ensuring that messages are neither lost nor seen more than once.
+
+### 11.5.1 Implementing Idempotent Consumers with OpenSearch
+
+When integrating Kafka with external systems like OpenSearch, ensuring idempotent processing is crucial. This prevents duplicate entries when messages are reprocessed after a consumer failure. Below are two strategies for achieving idempotence in OpenSearch consumers:
+
+#### Strategy 1: Kafka Record Coordinates
+- Use Kafka's inherent coordinates (topic, partition, and offset) as a unique identifier to prevent duplicates:
+  ```java
+  String id = record.topic() + "_" + record.partition() + "_" + record.offset();
+  ```
+
+#### Strategy 2: Extracting ID from Message Content
+- Preferably, extract a unique identifier from the message content if available. This approach ties the idempotence to the data itself, which is more natural and reliable:
+  ```java
+  private static String extractId(String json) {
+      return JsonParser.parseString(json)
+             .getAsJsonObject()
+             .get("meta")
+             .getAsJsonObject()
+             .get("id")
+             .getAsString();
+  }
+  ```
+
+### Implementation Example
+
+Here's how you can implement an OpenSearch consumer that uses the second strategy to ensure idempotent processing:
+
+```java
+public static void main(String[] args) throws IOException {
+    RestHighLevelClient openSearchClient = createOpenSearchClient();
+    KafkaConsumer<String, String> consumer = createKafkaConsumer();
+    consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
+
+    try {
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
+            for (ConsumerRecord<String, String> record : records) {
+                String id = extractId(record.value());
+                IndexRequest indexRequest = new IndexRequest("wikimedia")
+                        .source(record.value(), XContentType.JSON)
+                        .id(id);
+
+                IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                log.info("Document indexed with ID: " + response.getId());
+            }
+        }
+    } finally {
+        consumer.close();
+        openSearchClient.close();
+    }
+}
+```
