@@ -77,6 +77,12 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
     2. [At-Least-Once](#1152-at-least-once)
     3. [Exactly-Once](#1153-exactly-once)
     4. [Implementing Idempotent Consumers](#1154-implementing-idempotent-consumers)
+13. [Kafka Consumer Offset Commit Strategies](#116-kafka-consumer-offset-commit-strategies)
+    1. [Auto Offset Commit](#1161-auto-offset-commit)
+    2. [Manual Offset Commit](#1162-manual-offset-commit)
+    3. [Practical Example: Integrating with OpenSearch](#1163-practical-example-integrating-with-opensearch)
+
+
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
 
@@ -898,6 +904,7 @@ private static KafkaConsumer<String, String> createKafkaConsumer() {
     properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "consumer-opensearch-demo");
     properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    
     return new KafkaConsumer<>(properties);
 }
 ```
@@ -1066,3 +1073,79 @@ Here's how you can implement an OpenSearch consumer that uses the second strateg
         }
 }
 ```
+---
+
+## 11.6 Kafka Consumer Offset Commit Strategies
+
+In Apache Kafka, managing how and when offsets are committed is crucial for reliable message processing. There are two primary strategies for committing offsets in Kafka consumers:
+
+### 11.6.1 Auto Offset Commit
+
+The simplest and most common approach is enabling automatic offset commits. This method relies on the `enable.auto.commit` configuration, which is typically set to `true`. When enabled, offsets are committed automatically in the background at a specified interval (`auto.commit.interval.ms`).
+
+#### Example of Auto Offset Commit Configuration:
+
+```java
+Properties properties = new Properties();
+properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+properties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000");
+```
+
+This configuration commits offsets every 5000 milliseconds (or 5 seconds). It's suitable for scenarios where occasional message reprocessing is acceptable in the event of a failure, as it guarantees at-least-once delivery by committing offsets at regular intervals.
+
+### 11.6.2 Manual Offset Commit
+
+For more control over when and how offsets are committed, you can disable automatic commits (`enable.auto.commit = false`) and manage offset commits manually. This approach is more complex but provides greater assurance that messages are processed before their offsets are committed, aligning with at-least-once or exactly-once processing semantics.
+
+#### Example of Manual Offset Commit:
+
+```java
+properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
+try {
+    while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(5000));
+        processRecords(records);
+        consumer.commitSync(); // Synchronously commit offsets after processing
+    }
+} finally {
+    consumer.close();
+}
+```
+
+In this approach, `commitSync()` is called after the records have been processed, ensuring that offsets are only committed if the processing completes successfully. This method protects against data loss but requires careful error handling to avoid processing the same data multiple times after a failure.
+
+### 11.6.3 Practical Example: Integrating with OpenSearch
+
+When integrating Kafka with external systems like OpenSearch, it's crucial to commit offsets only after the data has been successfully indexed to ensure data consistency. Below is an example that illustrates how to consume data from Kafka, index it into OpenSearch, and manually commit offsets:
+
+```java
+    public static void main(String[] args) throws IOException {
+      // ... same code 
+        // processing beggin
+        for (ConsumerRecord<String, String> record : records) {
+
+           // send the record into OpenSearch
+           
+           try {
+   
+                 String id = extractId(record.value());
+         
+                 IndexRequest indexRequest = new IndexRequest("wikimedia")
+                 .source(record.value(), XContentType.JSON)
+                 .id(id);
+         
+                 IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                 //log.info("Document indexed with ID: " + response.getId());
+                 } catch (Exception e){}
+        }
+
+        // commit offsets after the batch is consumed 
+        consumer.commitAsync();
+        log.info("Offsets have been committed!");
+
+}
+
+```
+
+In this example, the `commitAsync()` method is used to commit offsets after each batch of records has been successfully indexed in OpenSearch. This setup ensures that each record is processed and indexed exactly once, thereby preventing data duplication in the event of a consumer restart or failure.

@@ -154,13 +154,16 @@ public class OpenSearchConsumer {
                                 .id(id);
 
                         IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
-                        log.info("Document indexed with ID: " + response.getId());
+                        //log.info("Document indexed with ID: " + response.getId());
                     } catch (Exception e){
 
                     }
 
-
                 }
+
+                // commit offsets after the batch is consumed
+                consumer.commitAsync();
+                log.info("Offsets have been committed!");
 
             }
 
