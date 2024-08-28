@@ -56,23 +56,22 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
     3. [Sticky Partitioner](#103-sticky-partitioner)
     4. [Performance Improvements with Sticky Partitioner](#1031-performance-improvements-with-sticky-partitioner)
 11. [OpenSearch Consumer](#11-opensearch-consumer)
-    1. [Project Setup](#111-project-setup)
-    2. [Running OpenSearch with Docker](#112-running-opensearch-with-docker)
-    3. [OpenSearch API Operation](#113-opensearch-api-operation)
-       1. [Creating an Index](#1131-creating-an-index)
-       2. [Adding Documents](#1132-adding-documents)
-       3. [Retrieving Documents](#1133-retrieving-documents)
-       4. [Deleting Documents](#1134-deleting-documents)
-       5. [Deleting the Index](#1135-deleting-the-index)
-    4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
-       1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
-       2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
-       3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
-       4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
-       5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
-       6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
-       7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
-
+   1. [Project Setup](#111-project-setup)
+   2. [Running OpenSearch with Docker](#112-running-opensearch-with-docker)
+   3. [OpenSearch API Operation](#113-opensearch-api-operation)
+      1. [Creating an Index](#1131-creating-an-index)
+      2. [Adding Documents](#1132-adding-documents)
+      3. [Retrieving Documents](#1133-retrieving-documents)
+      4. [Deleting Documents](#1134-deleting-documents)
+      5. [Deleting the Index](#1135-deleting-the-index)
+   4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
+      1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
+      2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+      3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
+      4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
+      5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
+      6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
+      7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
 
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
@@ -882,28 +881,8 @@ public static RestHighLevelClient createOpenSearchClient() {
 }
 ```
 
-### 11.4.2 Checking and Creating an Index in OpenSearch
 
-Once the client is set up, the next step is to ensure that a specific index exists in OpenSearch before sending data to it. If the index does not exist, it should be created.
-
-#### Code Example for Index Management:
-
-```java
-public static void ensureIndexExists(RestHighLevelClient client, String indexName) throws IOException {
-    boolean indexExists = client.indices().exists(new GetIndexRequest(indexName), RequestOptions.DEFAULT);
-
-    if (!indexExists) {
-        CreateIndexRequest request = new CreateIndexRequest(indexName);
-        client.indices().create(request, RequestOptions.DEFAULT);
-        System.out.println("Index " + indexName + " created successfully.");
-    } else {
-        System.out.println("Index " + indexName + " already exists.");
-    }
-}
-```
-
-
-### 11.4.3 Create an Opensearch Client
+### 11.4.2 Create an Opensearch Client
 
 First, we create a `RestHighLevelClient` to connect to OpenSearch. This client manages all communications with the OpenSearch server:
 
@@ -929,7 +908,7 @@ public static RestHighLevelClient createOpenSearchClient() {
 }
 ```
 
-### 11.4.4 Creating the Kafka Consumer
+### 11.4.3 Creating the Kafka Consumer
 
 The Kafka Consumer is configured to subscribe to the `wikimedia.recentchange` topic and read records. Here's how you can set it up:
 
@@ -945,7 +924,7 @@ private static KafkaConsumer<String, String> createKafkaConsumer() {
 }
 ```
 
-### 11.4.5 Checking and Creating an Index in OpenSearch
+### 11.4.4 Checking and Creating an Index in OpenSearch
 
 Before data ingestion, ensure the OpenSearch index exists, or create it if it doesn't:
 
@@ -960,7 +939,7 @@ if (!indexExists) {
 }
 ```
 
-### 11.4.6 Consuming and Indexing Data
+### 11.4.5 Consuming and Indexing Data
 
 After setting up the client and ensuring the index exists, the consumer reads data from Kafka and indexes it into OpenSearch:
 
@@ -977,10 +956,7 @@ while (true) {
 ```
 
 
-
-
-
-### 11.4.7 Verifying Data Insertion in OpenSearch
+### 11.4.6 Verifying Data Insertion in OpenSearch
 
 Once data is indexed in OpenSearch, you can verify the document by querying it directly in the OpenSearch Dashboard. To trace the data, check for the document ID logged in your IntelliJ terminal, which will look similar to this:
 
