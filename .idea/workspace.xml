@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="4287fe9a-38a7-4030-b72c-c23f6f37224c" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kafka-consumer-opensearch/src/main/java/org/example/kafka/opensearch/OpenSearchConsumer.java" beforeDir="false" afterPath="$PROJECT_DIR$/kafka-consumer-opensearch/src/main/java/org/example/kafka/opensearch/OpenSearchConsumer.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -56,7 +57,7 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.OpenSearchConsumer">
+  <component name="RunManager" selected="Application.WikimediaChangesProducer">
     <configuration name="OpenSearchConsumer" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="org.example.kafka.opensearch.OpenSearchConsumer" />
       <module name="kafka-wikimedia-data-pipeline.kafka-consumer-opensearch.main" />

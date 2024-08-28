@@ -64,9 +64,15 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
        3. [Retrieving Documents](#1133-retrieving-documents)
        4. [Deleting Documents](#1134-deleting-documents)
        5. [Deleting the Index](#1135-deleting-the-index)
-    4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
-        1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
-        2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+       4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
+          1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
+          2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
+          3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
+          4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
+          5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
+          6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
+          7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
+
 
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
@@ -896,3 +902,121 @@ public static void ensureIndexExists(RestHighLevelClient client, String indexNam
 }
 ```
 
+
+### 11.4.3 Create an Opensearch Client
+
+First, we create a `RestHighLevelClient` to connect to OpenSearch. This client manages all communications with the OpenSearch server:
+
+```java
+public static RestHighLevelClient createOpenSearchClient() {
+    String connectionString = "http://localhost:9200"; // URL of the local OpenSearch instance
+    URI connUri = URI.create(connectionString);
+    String userInfo = connUri.getUserInfo();
+    if (userInfo == null) {
+        return new RestHighLevelClient(
+                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), "http")));
+    } else {
+        String[] auth = userInfo.split(":");
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY, 
+            new UsernamePasswordCredentials(auth[0], auth[1]));
+        return new RestHighLevelClient(
+                RestClient.builder(new HttpHost(connUri.getHost(), connUri.getPort(), connUri.getScheme()))
+                        .setHttpClientConfigCallback(httpAsyncClientBuilder -> 
+                            httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+                                    .setKeepAliveStrategy(new DefaultConnectionKeepAliveStrategy())));
+    }
+}
+```
+
+### 11.4.4 Creating the Kafka Consumer
+
+The Kafka Consumer is configured to subscribe to the `wikimedia.recentchange` topic and read records. Here's how you can set it up:
+
+```java
+private static KafkaConsumer<String, String> createKafkaConsumer() {
+    Properties properties = new Properties();
+    properties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+    properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "consumer-opensearch-demo");
+    properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    return new KafkaConsumer<>(properties);
+}
+```
+
+### 11.4.5 Checking and Creating an Index in OpenSearch
+
+Before data ingestion, ensure the OpenSearch index exists, or create it if it doesn't:
+
+```java
+boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
+if (!indexExists) {
+    CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
+    openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+    log.info("The Wikimedia Index has been created!");
+} else {
+    log.info("The Wikimedia Index already exists.");
+}
+```
+
+### 11.4.6 Consuming and Indexing Data
+
+After setting up the client and ensuring the index exists, the consumer reads data from Kafka and indexes it into OpenSearch:
+
+```java
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
+    for (ConsumerRecord<String, String> record : records) {
+        IndexRequest indexRequest = new IndexRequest("wikimedia")
+                .source(record.value(), XContentType.JSON);
+        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+        log.info("Document indexed with ID: " + response.getId());
+    }
+}
+```
+
+
+
+
+
+### 11.4.7 Verifying Data Insertion in OpenSearch
+
+Once data is indexed in OpenSearch, you can verify the document by querying it directly in the OpenSearch Dashboard. To trace the data, check for the document ID logged in your IntelliJ terminal, which will look similar to this:
+
+```
+[main] INFO OpenSearchConsumer - YqZ9epEBghSTW3VMMiZP
+```
+
+**Steps to verify the data:**
+
+1. **Access the OpenSearch Dashboard**:
+   - Open your browser and navigate to:
+     ```
+     http://localhost:5601/app/dev_tools#/console
+     ```
+
+2. **Query the Document**:
+   - Use the OpenSearch Dev Tools to execute the following query:
+     ```http
+     GET /wikimedia/_doc/YqZ9epEBghSTW3VMMiZP
+     ```
+   - Replace `YqZ9epEBghSTW3VMMiZP` with the actual ID logged in the terminal after indexing the document.
+
+3. **View the Document**:
+   - The response will display the JSON document that was sent from Apache Kafka to OpenSearch, confirming successful indexing:
+     ```json
+     {
+       "_index": "wikimedia",
+       "_type": "_doc",
+       "_id": "YqZ9epEBghSTW3VMMiZP",
+       "_version": 1,
+       "found": true,
+       "_source": {
+         "field1": "value1",
+         "field2": "value2"
+         // other fields from your JSON document
+       }
+     }
+     ```
+   - The `_source` field contains the actual data that was indexed in OpenSearch, verifying that the data stream from Kafka was successfully captured and stored.

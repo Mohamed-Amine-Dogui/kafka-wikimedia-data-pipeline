@@ -17,6 +17,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
+import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
@@ -68,6 +69,25 @@ public class OpenSearchConsumer {
         return restHighLevelClient;
     }
 
+    private static KafkaConsumer<String, String> createKafkaConsumer() {
+
+        String bootstrapServers = "127.0.0.1:9092";
+        String groupId = "consumer-opensearch-demo";
+
+        // create consumer configs
+        Properties properties = new Properties();
+        properties.setProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+
+        // create consumer
+        return new KafkaConsumer<>(properties);
+
+    }
+
 
     public static void main(String[] args) throws IOException {
 
@@ -76,14 +96,17 @@ public class OpenSearchConsumer {
         // first create an OpenSearch Client
         RestHighLevelClient openSearchClient = createOpenSearchClient();
 
+        // create our Kafka Client
+        KafkaConsumer<String, String> consumer = createKafkaConsumer();
+
 
         // we need to create the index on OpenSearch if it doesn't exist already
 
-        try(openSearchClient){
+        try (openSearchClient; consumer) {
 
             boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
 
-            if (!indexExists){
+            if (!indexExists) {
                 CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
                 openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
                 log.info("The Wikimedia Index has been created!");
@@ -91,7 +114,35 @@ public class OpenSearchConsumer {
                 log.info("The Wikimedia Index already exits");
             }
 
-            }
+            // we subscribe the consumer
+            consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
 
+            while (true) {
+
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
+
+                int recordCount = records.count();
+                log.info("Received " + recordCount + " record(s)");
+
+
+                for (ConsumerRecord<String, String> record : records) {
+
+                    // send the record into OpenSearch
+
+                    try {
+                        IndexRequest indexRequest = new IndexRequest("wikimedia")
+                                .source(record.value(), XContentType.JSON);
+
+                        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                        log.info(response.getId());
+                    } catch (Exception e){
+
+                    }
+
+
+                }
+
+            }
+        }
     }
 }
