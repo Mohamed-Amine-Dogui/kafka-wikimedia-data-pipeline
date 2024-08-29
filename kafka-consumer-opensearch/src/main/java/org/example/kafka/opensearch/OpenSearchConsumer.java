@@ -102,22 +102,41 @@ public class OpenSearchConsumer {
 
     public static void main(String[] args) throws IOException {
 
+        // to format a part of your code, highlight the section you want to format, then press Ctrl + Alt + L
+
         Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
 
-        // first create an OpenSearch Client
+        // create an OpenSearch Client
         RestHighLevelClient openSearchClient = createOpenSearchClient();
 
-        // create our Kafka Client
+        // create a Kafka Client
         KafkaConsumer<String, String> consumer = createKafkaConsumer();
 
+        // get a reference to the main thread
+        final Thread mainThread = Thread.currentThread();
 
-        // we need to create the index on OpenSearch if it doesn't exist already
+        // adding the shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                log.info("Detected a shutdown, let's exit by calling consumer.wakeup()...");
+                consumer.wakeup();
+
+                // join the main thread to allow the execution of the code in the main thread
+                try {
+                    mainThread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
 
         try (openSearchClient; consumer) {
 
             boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
-
             if (!indexExists) {
+
+                // create the index on OpenSearch if it doesn't exist already
                 CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
                 openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
                 log.info("The Wikimedia Index has been created!");
@@ -125,9 +144,10 @@ public class OpenSearchConsumer {
                 log.info("The Wikimedia Index already exits");
             }
 
-            // we subscribe the consumer
+            // subscribe the consumer to the topic
             consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
 
+            // begin processing
             while (true) {
 
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
@@ -135,14 +155,14 @@ public class OpenSearchConsumer {
                 int recordCount = records.count();
                 log.info("Received " + recordCount + " record(s)");
 
+                // implementing bulkRequest
+                BulkRequest bulkRequest = new BulkRequest();
 
+                // send the record into OpenSearch
                 for (ConsumerRecord<String, String> record : records) {
-
-                    // send the record into OpenSearch
 
                     /*//strategy 1 : define an ID using kafka Record coordinates
                     String id = record.topic() + "_" + record.partition() + "_" + record.offset();*/
-
 
                     try {
                         // strategy 2 : Extract the id field from the message that I will send (from the Json value) with the function extractId()
@@ -153,22 +173,41 @@ public class OpenSearchConsumer {
                                 .source(record.value(), XContentType.JSON)
                                 .id(id);
 
-                        IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+                        //IndexResponse response = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
                         //log.info("Document indexed with ID: " + response.getId());
-                    } catch (Exception e){
 
+                        bulkRequest.add(indexRequest);
+                    } catch (Exception e) {
                     }
 
                 }
 
-                // commit offsets after the batch is consumed
-                consumer.commitAsync();
-                log.info("Offsets have been committed!");
+                // execute the bulk request
+                if (bulkRequest.numberOfActions() > 0) {
+                    BulkResponse bulkResponse = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    log.info("Inserted " + bulkResponse.getItems().length + "record(s)");
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    // commit offsets after the batch is consumed
+                    consumer.commitAsync();
+                    log.info("Offsets have been committed!");
+                }
 
             }
-
+        } catch (WakeupException e) {
+            log.info("Consumer is starting to shut down...");
+        } catch (Exception e) {
+            log.error("Unexpected exception in the consumer", e);
+        } finally {
+            consumer.close(); // close the consumer and commit the offsets
+            openSearchClient.close();
+            log.info("The consumer is now gracefully shut down");
         }
     }
-
 
 }

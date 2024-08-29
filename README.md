@@ -44,8 +44,8 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
       2. [Broker-Level Compression](#812-broker-level-compression)
 9. [Kafka Producer Batching](#9-kafka-producer-batching)
    1. [Understanding Kafka Producer Batching](#91-understanding-kafka-producer-batching)
-      1. [Linger Time (`linger.ms`)](#911-linger-time-linger.ms)
-      2. [Batch Size (`batch.size`)](#912-batch-size-batch.size)
+      1. [Linger Time (`linger.ms`)](#911-linger-time-lingerms)
+      2. [Batch Size (`batch.size`)](#912-batch-size-batchsize)
    2. [Key Takeaways](#92-key-takeaways)
    3. [Advantages of Batching](#93-advantages-of-batching)
 10. [Kafka Producer Partitioner](#10-kafka-producer-partitioner)
@@ -67,21 +67,26 @@ This project is a hands-on guide to building a Kafka data pipeline that streams 
     4. [Implementing the OpenSearch Consumer](#114-implementing-the-opensearch-consumer)
        1. [Creating the OpenSearch Client](#1141-creating-the-opensearch-client)
        2. [Checking and Creating an Index in OpenSearch](#1142-checking-and-creating-an-index-in-opensearch)
-       3. [Create an Opensearch Client](#1143-create-an-opensearch-client)
-       4. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
-       5. [Checking and Creating an Index in OpenSearch](#1145-checking-and-creating-an-index-in-opensearch)
-       6. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
-       7. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
-12. [Delivery Semantics in Apache Kafka](#115-delivery-semantics-in-apache-kafka)
-    1. [At-Most-Once](#1151-at-most-once)
-    2. [At-Least-Once](#1152-at-least-once)
-    3. [Exactly-Once](#1153-exactly-once)
-    4. [Implementing Idempotent Consumers](#1154-implementing-idempotent-consumers)
-13. [Kafka Consumer Offset Commit Strategies](#116-kafka-consumer-offset-commit-strategies)
-    1. [Auto Offset Commit](#1161-auto-offset-commit)
-    2. [Manual Offset Commit](#1162-manual-offset-commit)
-    3. [Practical Example: Integrating with OpenSearch](#1163-practical-example-integrating-with-opensearch)
-
+       3. [Creating the Kafka Consumer](#1144-creating-the-kafka-consumer)
+       4. [Consuming and Indexing Data](#1146-consuming-and-indexing-data)
+       5. [Verifying Data Insertion in OpenSearch](#1147-verifying-data-insertion-in-opensearch)
+    5. [Delivery Semantics in Apache Kafka](#115-delivery-semantics-in-apache-kafka)
+        1. [At-Most-Once](#1151-at-most-once)
+        2. [At-Least-Once](#1152-at-least-once)
+        3. [Exactly-Once](#1153-exactly-once)
+        4. [Implementing Idempotent Consumers](#1154-implementing-idempotent-consumers)
+    6. [Kafka Consumer Offset Commit Strategies](#116-kafka-consumer-offset-commit-strategies)
+        1. [Auto Offset Commit](#1161-auto-offset-commit)
+        2. [Manual Offset Commit](#1162-manual-offset-commit)
+        3. [Practical Example: Integrating with OpenSearch](#1163-practical-example-integrating-with-opensearch)
+    7. [OpenSearch Consumer - Batching Data](#117-opensearch-consumer---batching-data)
+        1. [Importance of Batching](#1171-importance-of-batching)
+        2. [Implementing Data Batching in OpenSearch](#1172-implementing-data-batching-in-opensearch)
+    8. [Consumer Offset Reset Behavior](#118-consumer-offset-reset-behavior)
+       1. [Understanding Offset Reset](#1181-understanding-offset-reset)
+       2. [Configuring Offset Retention](#1182-configuring-offset-retention)
+       3. [Handling Offset Resets](#1183-handling-offset-resets)
+       4. [Example Code: Implementing Offset Reset in Kafka Consumer](#1184-example-code-implementing-offset-reset-in-kafka-consumer)
 
 
 ## 1. Kafka Wikimedia Data Pipeline Overview
@@ -1088,7 +1093,6 @@ The simplest and most common approach is enabling automatic offset commits. This
 ```java
 Properties properties = new Properties();
 properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
-properties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000");
 ```
 
 This configuration commits offsets every 5000 milliseconds (or 5 seconds). It's suitable for scenarios where occasional message reprocessing is acceptable in the event of a failure, as it guarantees at-least-once delivery by committing offsets at regular intervals.
@@ -1149,3 +1153,202 @@ When integrating Kafka with external systems like OpenSearch, it's crucial to co
 ```
 
 In this example, the `commitAsync()` method is used to commit offsets after each batch of records has been successfully indexed in OpenSearch. This setup ensures that each record is processed and indexed exactly once, thereby preventing data duplication in the event of a consumer restart or failure.
+
+---
+
+## 11.7 OpenSearch Consumer - Batching Data
+
+Batch processing is an efficient way to handle large amounts of data within a consumer application. When implementing batch processing in an OpenSearch consumer, we can significantly improve performance by reducing the number of write operations to the database. This section discusses how to implement batching in the OpenSearch consumer linked to a Kafka data pipeline.
+
+### 11.7.1 Importance of Batching
+
+Batching is crucial for optimizing data ingestion processes in OpenSearch, particularly when dealing with high-throughput data streams from Kafka. By collecting multiple data points into a single request, the network overhead is minimized, and computational resources are used more efficiently.
+
+### 11.7.2 Implementing Data Batching in OpenSearch
+
+To implement data batching effectively, we utilize the `BulkRequest` feature provided by OpenSearch's Java API. This allows multiple index operations to be executed in a single API call.
+
+#### Example Code: Batch Processing with BulkRequest
+
+```java
+// Create a BulkRequest instance
+BulkRequest bulkRequest = new BulkRequest();
+
+for (ConsumerRecord<String, String> record : records) {
+    try {
+            String id = extractId(record.value());
+            IndexRequest indexRequest = new IndexRequest("wikimedia")
+                .source(record.value(), XContentType.JSON)
+                .id(id);
+            
+            bulkRequest.add(indexRequest);
+        } catch (Exception e) {}
+}
+
+// execute the bulk request
+if (bulkRequest.numberOfActions() > 0) {
+    BulkResponse bulkResponse = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+    log.info("Inserted " + bulkResponse.getItems().length + "record(s)");
+    
+    try {
+        Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    
+    // commit offsets after the batch is consumed
+    consumer.commitAsync();
+    log.info("Offsets have been committed!");
+}
+```
+---
+
+
+## 11.8 Consumer Offset Reset Behavior
+
+In Apache Kafka, the behavior of a consumer when it faces an unknown or invalid offset is critical for data processing reliability and application stability. This behavior is controlled by the `auto.offset.reset` setting in consumer configurations. Here’s what you need to know:
+
+### 11.8.1 Understanding Offset Reset
+
+Kafka retains messages for a configurable period, typically seven days. If a consumer has not polled new data within this retention window due to application downtime or errors, it may encounter an offset out of range error when it restarts. The `auto.offset.reset` configuration determines how the consumer reacts in such scenarios:
+
+1. **latest (default)**: The consumer will start reading from the end of the log.
+2. **earliest**: The consumer will read from the beginning of the log.
+3. **none**: If no previous offset is found for the consumer group, an exception is thrown. This prevents data loss by avoiding automatic offset reset.
+
+### 11.8.2 Configuring Offset Retention
+
+The retention of consumer offsets is configurable via `offsets.retention.minutes` in the broker settings. This is critical to adjust based on your application's downtime tolerance:
+
+- **Kafka < 2.0**: Default retention of consumer offsets is one day.
+- **Kafka >= 2.0**: Default retention extends to seven days.
+
+Increasing this retention period is advisable if your consumers might be offline for extended durations.
+
+### 11.8.3 Handling Offset Resets
+
+To handle scenarios where you need to reset offsets manually or automatically due to prolonged downtime, consider the following steps:
+
+1. **Stop the consumer**: Ensure that all instances of your consumer group are stopped.
+2. **Reset offsets**: Use the `kafka-consumer-groups` CLI tool to reset offsets. You can choose to set it to the earliest or latest, or shift by a certain number of messages back or forward.
+3. **Restart consumers**: After resetting the offsets, restart your consumers to begin processing messages from the new offsets.
+
+### 11.8.4 Example Code: Implementing Offset Reset in Kafka Consumer
+
+Here's how you might handle a graceful shutdown and offset reset within your Kafka consumer application:
+
+
+```java
+
+    public static void main(String[] args) throws IOException {
+        
+        // to format a part of your code, highlight the section you want to format, then press Ctrl + Alt + L
+
+        Logger log = LoggerFactory.getLogger(OpenSearchConsumer.class.getSimpleName());
+
+        // create an OpenSearch Client
+        RestHighLevelClient openSearchClient = createOpenSearchClient();
+
+        // create a Kafka Client
+        KafkaConsumer<String, String> consumer = createKafkaConsumer();
+
+        // get a reference to the main thread
+        final Thread mainThread = Thread.currentThread();
+
+        // adding the shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                log.info("Detected a shutdown, let's exit by calling consumer.wakeup()...");
+                consumer.wakeup();
+
+                // join the main thread to allow the execution of the code in the main thread
+                try {
+                    mainThread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+
+        try (openSearchClient; consumer) {
+
+            boolean indexExists = openSearchClient.indices().exists(new GetIndexRequest("wikimedia"), RequestOptions.DEFAULT);
+            if (!indexExists) {
+
+                // create the index on OpenSearch if it doesn't exist already
+                CreateIndexRequest createIndexRequest = new CreateIndexRequest("wikimedia");
+                openSearchClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+                log.info("The Wikimedia Index has been created!");
+            } else {
+                log.info("The Wikimedia Index already exits");
+            }
+
+            // subscribe the consumer to the topic
+            consumer.subscribe(Collections.singleton("wikimedia.recentchange"));
+
+            // begin processing 
+            while (true) {
+
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(3000));
+
+                int recordCount = records.count();
+                log.info("Received " + recordCount + " record(s)");
+
+                // implementing bulkRequest
+                BulkRequest bulkRequest = new BulkRequest();
+
+                // send the record into OpenSearch
+                for (ConsumerRecord<String, String> record : records) {
+                    try {
+                        String id = extractId(record.value());
+
+                        IndexRequest indexRequest = new IndexRequest("wikimedia")
+                                .source(record.value(), XContentType.JSON)
+                                .id(id);
+
+                        bulkRequest.add(indexRequest);
+                    } catch (Exception e) {
+                    }
+
+                }
+
+                // execute the bulk request
+                if (bulkRequest.numberOfActions() > 0) {
+                    BulkResponse bulkResponse = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    log.info("Inserted " + bulkResponse.getItems().length + "record(s)");
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    // commit offsets after the batch is consumed
+                    consumer.commitAsync();
+                    log.info("Offsets have been committed!");
+                }
+
+            }
+        } catch (WakeupException e) {
+            log.info("Consumer is starting to shut down...");
+        } catch (Exception e) {
+            log.error("Unexpected exception in the consumer", e);
+        } finally {
+            consumer.close(); // close the consumer and commit the offsets
+            openSearchClient.close();
+            log.info("The consumer is now gracefully shut down");
+        }
+    }
+
+}
+
+```
+
+### Key Takeaways
+
+- **Set Proper Data Retention**: Configure your Kafka and application settings to handle your data and offset retention needs effectively.
+- **Monitor Consumer Groups**: Regularly check the status of your consumer groups using Kafka's monitoring tools or CLI to manage offsets and detect potential issues.
+- **Implement Graceful Shutdown**: Ensure your consumer application handles shutdowns gracefully to maintain consistent state and prevent data loss.
+
+---
