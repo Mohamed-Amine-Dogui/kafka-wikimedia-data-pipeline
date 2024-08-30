@@ -1000,6 +1000,33 @@ When integrating Kafka with external systems like OpenSearch, ensuring idempoten
 
 #### Strategy 2: Extracting ID from Message Content
 - Preferably, extract a unique identifier from the message content if available. This approach ties the idempotence to the data itself, which is more natural and reliable:
+
+  ```json
+      {
+      "_index" : "wikimedia",
+      "_type" : "_doc",
+      "_id" : "YqZ9epEBghSTW3VMMiZP",
+      "_version" : 1,
+      "_seq_no" : 898,
+      "_primary_term" : 2,
+      "found" : true,
+      "_source" : {
+         "$schema" : "/mediawiki/recentchange/1.0.0",
+         "meta" : {
+            "uri" : "https://vi.wikipedia.org/wiki/Th%E1%BB%83_lo%E1%BA%A1i:H%E1%BB%99p_%C4%91i%E1%BB%81u_h%C6%B0%E1%BB%9Bng_kh%C3%B4ng_th%E1%BB%83_%C4%91%E1%BB%8Dc_%C4%91%C6%B0%E1%BB%A3c",
+            "request_id" : "da94d98f-0b5d-4d04-9e96-78458884acd8",
+            "id" : "67920705-395f-45ec-a765-b362fcf4026a",
+            "dt" : "2024-08-22T14:26:56Z",
+            "domain" : "vi.wikipedia.org",
+            "stream" : "mediawiki.recentchange",
+            "topic" : "eqiad.mediawiki.recentchange",
+            "partition" : 0,
+            "offset" : 5357248498
+         },
+         ...
+      }
+  ```
+
   ```java
   private static String extractId(String json) {
       return JsonParser.parseString(json)
